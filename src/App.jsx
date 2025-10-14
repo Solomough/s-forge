@@ -3,7 +3,8 @@ import SiteHeader from './components/SiteHeader.jsx';
 import HeroSection from './components/HeroSection.jsx'; 
 import WorkflowSection from './components/WorkflowSection.jsx'; 
 import CaseStudiesSection from './components/CaseStudiesSection.jsx'; 
-import CallToActionSection from './components/CallToActionSection.jsx'; // Import the new CTA component
+import CallToActionSection from './components/CallToActionSection.jsx'; 
+import SiteFooter from './components/SiteFooter.jsx'; // Import the final Footer component
 
 // Framer Motion variant for smooth page transitions
 const pageTransition = {
@@ -33,10 +34,11 @@ function App() {
           <HeroSection /> 
           <WorkflowSection /> 
           <CaseStudiesSection /> 
-          <CallToActionSection /> {/* The final, high-impact CTA */}
+          <CallToActionSection /> 
         </main>
         
-        {/* 3. Footer will go here */}
+        {/* 3. The Branded Footer */}
+        <SiteFooter />
         
       </motion.div>
     </AnimatePresence>
