@@ -55,12 +55,12 @@ const WorkflowSection = () => {
         {/* Section Heading */}
         <div className="text-center mb-16">
           <motion.h2 
-            initial={{ y: 20, opacity: 0 }}
+            initial={{ y: 10, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true, amount: 0.5 }}
             className="text-4xl md:text-5xl font-extrabold text-s-text mb-4"
           >
-            The S-Forge Process: Excellence in Three Stages
+            The S-Forge Process:
           </motion.h2>
           <motion.p 
             initial={{ y: 20, opacity: 0 }}
