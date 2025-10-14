@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* * S-Forge Note: 
+ * Any custom global CSS (e.g., specific fonts, scrollbar styles, or base body/html overrides 
+ * not handled by Tailwind) can be added here.
+ */
+
+/* Example: Setting a smooth scroll and a default background color */
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    @apply bg-gray-50 text-gray-800 antialiased; 
+    /* The S-Forge strategist will define exact colors based on brand identity */
+}
