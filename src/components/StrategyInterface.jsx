@@ -16,24 +16,36 @@ const promptVariants = {
 };
 
 const StrategyInterface = () => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0); // 0-4 are questions
   const [answers, setAnswers] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isBlueprintReady, setIsBlueprintReady] = useState(false); // New state for final transition
 
   const currentQuestion = strategyQuestions[currentStep];
 
   const handleNext = (e) => {
     e.preventDefault();
-    if (currentStep < strategyQuestions.length) {
+    
+    // Check if current answer is empty before proceeding
+    if (currentStep < strategyQuestions.length && !answers[currentQuestion.id]) {
+      alert("Please provide an answer before moving to the next question.");
+      return;
+    }
+
+    if (currentStep < strategyQuestions.length - 1) {
+      // Move to the next question
       setCurrentStep(prev => prev + 1);
-    } else {
-      // Logic for final project generation
+    } else if (currentStep === strategyQuestions.length - 1) {
+      // Final question answered: Start Processing Phase
       setIsProcessing(true);
+      console.log("[STRATEGY ENGINE] Final Answers:", answers);
+      
+      // Simulate backend processing time for the Project Blueprint
       setTimeout(() => {
         setIsProcessing(false);
-        alert("Strategy Complete! The Build Engine is now ready to generate your blueprint.");
-        // In a real app, this would trigger the backend generation process
-      }, 2000); 
+        setIsBlueprintReady(true);
+        console.log("[STRATEGY ENGINE] Project Blueprint Generated. Ready for Build Engine.");
+      }, 3500); // 3.5 second simulated processing time
     }
   };
 
@@ -43,26 +55,65 @@ const StrategyInterface = () => {
       [currentQuestion.id]: value
     });
   };
+  
+  // Placeholder for triggering the next phase (Build Engine)
+  const launchBuildCanvas = () => {
+      alert("Launching Build Canvas! (Simulation). In a real application, the generated code files would now appear in the editor.");
+      console.log("[S-FORGE] Transitioning to Build Canvas with Blueprint Data.");
+  }
 
-  return (
-    <div className="min-h-screen bg-gray-900 text-s-background flex flex-col pt-20">
-      
-      {/* Strategy Header */}
-      <header className="py-6 bg-s-primary shadow-lg border-b border-s-accent/50">
-        <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold text-s-accent">
-            <span className="text-s-background">S-Forge</span> Strategy Engine
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">Your vision, guided by expert AI strategy. Step {Math.min(currentStep + 1, strategyQuestions.length)} of {strategyQuestions.length}.</p>
-        </div>
-      </header>
 
-      {/* Main Conversational Area */}
-      <main className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center">
-        <div className="w-full max-w-3xl bg-gray-800 p-8 rounded-2xl shadow-2xl border border-s-accent/20">
-
-          <AnimatePresence mode="wait">
-            {currentStep < strategyQuestions.length ? (
+  // --- Render Logic ---
+  const renderContent = () => {
+      if (isProcessing) {
+          // 1. Processing State
+          return (
+              <motion.div
+                key="processing"
+                variants={promptVariants}
+                initial="hidden"
+                animate="visible"
+                className="text-center"
+              >
+                <p className="text-s-accent text-2xl mb-4">⚙️ **Strategy Complete!**</p>
+                <h2 className="text-4xl font-extrabold text-s-background mb-6">
+                  Analyzing Data & Compiling Project Blueprint...
+                </h2>
+                <div className="mt-6 flex justify-center items-center space-x-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-4 border-s-accent"></div>
+                  <span className="text-s-accent text-xl font-medium">Please wait, forging excellence...</span>
+                </div>
+              </motion.div>
+          );
+      } else if (isBlueprintReady) {
+          // 2. Blueprint Ready State (Final CTA)
+          return (
+              <motion.div
+                key="summary"
+                variants={promptVariants}
+                initial="hidden"
+                animate="visible"
+                className="text-center"
+              >
+                <p className="text-s-accent text-2xl mb-4">✅ **Blueprint Ready: Output 1/3 Complete!**</p>
+                <h2 className="text-4xl font-extrabold text-s-background mb-6">
+                  Initiate the Build Engine
+                </h2>
+                <p className="text-gray-400 max-w-lg mx-auto">
+                  Your vision is clear. Click below to generate the pristine, file-by-file code based on your strategy.
+                </p>
+                
+                <button
+                    onClick={launchBuildCanvas}
+                    className="mt-8 px-8 py-4 bg-s-accent text-s-primary font-bold rounded-lg shadow-xl hover:bg-opacity-90 transition duration-300 transform hover:scale-[1.05]"
+                >
+                    Launch Build Canvas →
+                </button>
+              </motion.div>
+          );
+      } else {
+          // 3. Question State
+          return (
               <motion.div
                 key={currentStep}
                 variants={promptVariants}
@@ -70,7 +121,7 @@ const StrategyInterface = () => {
                 animate="visible"
                 exit="hidden"
               >
-                <p className="text-s-accent text-lg mb-2 font-medium">S-Forge Question {currentStep + 1}:</p>
+                <p className="text-s-accent text-lg mb-2 font-medium">S-Forge Question {currentStep + 1} of {strategyQuestions.length}:</p>
                 <h2 className="text-3xl font-extrabold text-s-background mb-6">
                   {currentQuestion.prompt}
                 </h2>
@@ -87,52 +138,39 @@ const StrategyInterface = () => {
                   <div className="flex justify-end mt-4">
                     <button
                       type="submit"
-                      disabled={isProcessing}
-                      className="px-6 py-3 bg-s-accent text-s-primary font-bold rounded-lg shadow-md hover:bg-opacity-90 transition duration-300 disabled:opacity-50"
+                      className="px-6 py-3 bg-s-accent text-s-primary font-bold rounded-lg shadow-md hover:bg-opacity-90 transition duration-300"
                     >
                       {currentStep < strategyQuestions.length - 1 ? 'Next Question →' : 'Finalize Strategy'}
                     </button>
                   </div>
                 </form>
               </motion.div>
-            ) : (
-              <motion.div
-                key="summary"
-                variants={promptVariants}
-                initial="hidden"
-                animate="visible"
-                className="text-center"
-              >
-                <p className="text-s-accent text-2xl mb-4">✨ Strategy Complete!</p>
-                <h2 className="text-4xl font-extrabold text-s-background mb-6">
-                  Initiating Build Engine...
-                </h2>
-                <p className="text-gray-400">
-                  Your project blueprint is being compiled based on the focused data. Ready for the code generation phase.
-                </p>
-                
-                {isProcessing && (
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="mt-6 flex justify-center items-center space-x-2"
-                  >
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-s-accent"></div>
-                    <span className="text-s-accent">Processing excellence...</span>
-                  </motion.div>
-                )}
-                
-                {!isProcessing && (
-                    <button
-                        onClick={() => alert("Simulating switch to Build Canvas UI...")}
-                        className="mt-8 px-8 py-4 bg-s-accent text-s-primary font-bold rounded-lg shadow-xl hover:bg-opacity-90 transition duration-300"
-                    >
-                        View Project Blueprint & Code Canvas
-                    </button>
-                )}
-                
-              </motion.div>
-            )}
+          );
+      }
+  }
+
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-s-background flex flex-col pt-20">
+      
+      {/* Strategy Header */}
+      <header className="py-6 bg-s-primary shadow-lg border-b border-s-accent/50">
+        <div className="container mx-auto px-4">
+          <h1 className="text-3xl font-bold text-s-accent">
+            <span className="text-s-background">S-Forge</span> Strategy Engine
+          </h1>
+          <p className="text-sm text-gray-400 mt-1">
+            Phase: {isBlueprintReady ? 'Blueprint Ready' : isProcessing ? 'Processing' : `Strategy Collection`}
+          </p>
+        </div>
+      </header>
+
+      {/* Main Conversational Area */}
+      <main className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center">
+        <div className="w-full max-w-3xl bg-gray-800 p-8 rounded-2xl shadow-2xl border border-s-accent/20">
+
+          <AnimatePresence mode="wait">
+            {renderContent()}
           </AnimatePresence>
         </div>
       </main>
