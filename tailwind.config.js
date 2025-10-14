@@ -1,24 +1,21 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  // Directs Tailwind to scan all React and JavaScript files for class names
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  // ... (content remains the same)
   theme: {
-    // Defines custom design tokens (optional, but good practice for a brand-focused tool)
+    // Defines custom design tokens
     extend: {
       colors: {
-        // Placeholder custom color—S-Forge will fill this with brand colors from Stage 1
-        'primary-brand': '#0066FF', // Example of a strong blue
-        'secondary-accent': '#FFD700', // Example of a gold/yellow accent
+        // OFFICIAL S-FORGE BRAND COLORS
+        's-primary': '#000000',     // Black (Sophistication, Foundation)
+        's-accent': '#FFD700',      // Gold (Prestige, Excellence)
+        's-background': '#FFFFFF',  // White (Simplicity, Contrast)
+        's-text': '#000000',        // Default text color
       },
       fontFamily: {
-        // Placeholder custom font—S-Forge will recommend based on project strategy
+        // Using Inter as a high-quality, modern sans-serif font
         sans: ['Inter', 'sans-serif'], 
-        serif: ['Merriweather', 'serif'],
       },
-      // You can add more customizations here (e.g., custom animations, shadows)
+      // ... (other extensions)
     },
   },
   plugins: [],
