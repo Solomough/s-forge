@@ -1,105 +1,97 @@
 import { motion } from 'framer-motion';
+import { ChevronRight } from 'lucide-react'; // Example Icon
 
-// Data for example projects forged by S-Forge
-const projects = [
+// Data for case studies
+const caseStudies = [
   {
     title: "Vizion DAO Dashboard",
     description: "A high-performance Web3 governance dashboard built for community management and token staking.",
-    stack: ["React", "Web3.js", "Tailwind CSS", "Framer Motion"],
-    link: "#",
-    delay: 0.1,
+    tech: ["React", "Web3.js", "Tailwind CSS", "Framer Motion"],
+    link: "https://case-study-viziondao.com", // Placeholder URL
   },
   {
     title: "AI Prompt Generator",
     description: "An intuitive AI tool wrapper for creative content generation, focused on clean UX and speed.",
-    stack: ["React", "OpenAI API", "Tailwind CSS"],
-    link: "#",
-    delay: 0.2,
+    tech: ["React", "OpenAI API", "Tailwind CSS"],
+    link: "https://case-study-aiprompt.com", // Placeholder URL
   },
   {
     title: "Solomough Portfolio v3",
     description: "The creator's own vision brought to life, merging personal brand narrative with cutting-edge tech showcases.",
-    stack: ["React", "Framer Motion", "Tailwind CSS", "SEO Focus"],
-    link: "#",
-    delay: 0.3,
+    tech: ["React", "Framer Motion", "Tailwind CSS", "SEO Focus"],
+    link: "https://solo-mough-yh1r.vercel.app", // Placeholder URL
   },
 ];
 
-// Framer Motion variants for card entry
-const cardVariants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
-    scale: 1, 
-    transition: { 
-      type: "spring", 
-      stiffness: 70 
-    } 
-  }
-};
-
 const CaseStudiesSection = () => {
-  return (
-    <section id="projects" className="py-24 md:py-32 bg-gray-50">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Section Heading */}
-        <div className="text-center mb-16">
-          <motion.h2 
-            initial={{ y: 20, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true, amount: 0.5 }}
-            className="text-4xl md:text-5xl font-extrabold text-s-primary mb-4"
-          >
-            Proof of Excellence: Projects Forged
-          </motion.h2>
-          <motion.p 
-            initial={{ y: 20, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true, amount: 0.5 }}
-            transition={{ delay: 0.1 }}
-            className="text-xl text-gray-600 max-w-3xl mx-auto"
-          >
-            See the results of the **Build Engine**—high-quality, focused solutions leveraging the best in modern web development.
-          </motion.p>
-        </div>
+    
+  const handleCaseStudyClick = (title) => {
+      // Action simulation instead of a hard link that reloads
+      console.log(`[PROJECTS] Navigating to simulated case study for: ${title}`);
+      // NOTE: Using a custom modal/message box instead of alert()
+      alert(`Viewing simulated case study for: ${title}. (In a full app, this would load a new page or modal).`);
+  };
 
-        {/* Projects Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-10">
-          {projects.map((project, index) => (
-            <motion.div 
-              key={index} 
-              variants={cardVariants}
-              initial="hidden"
-              whileInView="visible"
+  return (
+    <section id="projects" className="py-20 md:py-32 bg-s-primary text-s-background">
+      <div className="container mx-auto px-4">
+        
+        {/* Header */}
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true, amount: 0.3 }}
+          className="text-center text-3xl sm:text-4xl lg:text-5xl font-black mb-4 text-s-accent"
+        >
+          Proof of Excellence: Projects Forged
+        </motion.h2>
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          viewport={{ once: true, amount: 0.3 }}
+          className="text-center text-lg sm:text-xl font-light text-gray-400 max-w-3xl mx-auto mb-16"
+        >
+          See the results of the **Build Engine**—high-quality, focused solutions leveraging the best in modern web development.
+        </motion.p>
+
+        {/* Case Study Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {caseStudies.map((study, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
               viewport={{ once: true, amount: 0.3 }}
-              transition={{ delay: project.delay }}
-              className="bg-s-background border border-gray-200 rounded-xl overflow-hidden shadow-xl hover:shadow-2xl transition duration-300 transform hover:translate-y-[-5px]"
+              className="bg-gray-800 p-8 rounded-2xl shadow-xl border-t-4 border-s-accent/50 flex flex-col justify-between transform hover:shadow-s-accent/30 transition duration-300"
             >
-              <div className="p-6">
-                <h3 className="text-2xl font-bold text-s-text mb-3">{project.title}</h3>
-                <p className="text-gray-600 mb-4">{project.description}</p>
+              <div>
+                <h3 className="text-2xl font-bold mb-3 text-s-background">{study.title}</h3>
+                <p className="text-gray-400 mb-6 flex-grow">{study.description}</p>
                 
-                {/* Tech Stack Tags */}
+                {/* Tech Stack Pills */}
                 <div className="flex flex-wrap gap-2 mb-6">
-                  {project.stack.map((tech) => (
-                    <span 
-                      key={tech} 
-                      className="text-xs font-semibold px-3 py-1 rounded-full bg-s-primary text-s-accent border border-s-accent/50"
+                  {study.tech.map((tech, i) => (
+                    <span
+                      key={i}
+                      className="text-xs font-semibold px-3 py-1 bg-s-accent/10 text-s-accent rounded-full border border-s-accent/30"
                     >
                       {tech}
                     </span>
                   ))}
                 </div>
-                
-                {/* View Project Button */}
-                <a 
-                  href={project.link}
-                  className="inline-block px-4 py-2 bg-s-accent text-s-primary font-semibold text-sm rounded-lg hover:bg-s-primary hover:text-s-accent border border-s-accent transition duration-300"
-                >
-                  View Project Case Study &rarr;
-                </a>
               </div>
+
+              {/* Functional CTA Button */}
+              <button
+                onClick={() => handleCaseStudyClick(study.title)}
+                className="mt-4 flex items-center text-s-accent font-semibold hover:text-s-background transition duration-300 group"
+              >
+                View Project Case Study 
+                <ChevronRight className="w-5 h-5 ml-1 transition-transform duration-300 group-hover:translate-x-1" />
+              </button>
             </motion.div>
           ))}
         </div>
