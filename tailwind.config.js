@@ -1,21 +1,21 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  // ... (content remains the same)
+  // CRITICAL: Ensure 'content' covers all file types in your 'src' directory
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}", 
+  ],
   theme: {
-    // Defines custom design tokens
     extend: {
-      colors: {
-        // OFFICIAL S-FORGE BRAND COLORS
-        's-primary': '#000000',     // Black (Sophistication, Foundation)
-        's-accent': '#FFD700',      // Gold (Prestige, Excellence)
-        's-background': '#FFFFFF',  // White (Simplicity, Contrast)
-        's-text': '#000000',        // Default text color
-      },
       fontFamily: {
-        // Using Inter as a high-quality, modern sans-serif font
-        sans: ['Inter', 'sans-serif'], 
+        sans: ['Inter', 'sans-serif'],
       },
-      // ... (other extensions)
+      colors: {
+        // S-Forge Brand Colors
+        's-primary': '#0D0D0D',   // Near Black for backgrounds and main text
+        's-accent': '#FFD700',    // Gold for highlights and CTAs
+        's-background': '#FFFFFF', // Clean White for contrasting sections/text
+      },
     },
   },
   plugins: [],
