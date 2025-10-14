@@ -2,7 +2,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import SiteHeader from './components/SiteHeader.jsx'; 
 import HeroSection from './components/HeroSection.jsx'; 
 import WorkflowSection from './components/WorkflowSection.jsx'; 
-import CaseStudiesSection from './components/CaseStudiesSection.jsx'; // Import the new Case Studies component
+import CaseStudiesSection from './components/CaseStudiesSection.jsx'; 
+import CallToActionSection from './components/CallToActionSection.jsx'; // Import the new CTA component
 
 // Framer Motion variant for smooth page transitions
 const pageTransition = {
@@ -31,11 +32,11 @@ function App() {
         <main className="flex-grow">
           <HeroSection /> 
           <WorkflowSection /> 
-          <CaseStudiesSection /> {/* The visual proof of project excellence */}
-          {/* All subsequent sections will follow here */}
+          <CaseStudiesSection /> 
+          <CallToActionSection /> {/* The final, high-impact CTA */}
         </main>
         
-        {/* We will build the final branded footer here next */}
+        {/* 3. Footer will go here */}
         
       </motion.div>
     </AnimatePresence>
