@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import SiteHeader from './components/SiteHeader.jsx'; 
 import HeroSection from './components/HeroSection.jsx'; 
-import WorkflowSection from './components/WorkflowSection.jsx'; // Import the new Workflow component
+import WorkflowSection from './components/WorkflowSection.jsx'; 
+import CaseStudiesSection from './components/CaseStudiesSection.jsx'; // Import the new Case Studies component
 
 // Framer Motion variant for smooth page transitions
 const pageTransition = {
@@ -29,7 +30,8 @@ function App() {
         {/* 2. Main Content Area */}
         <main className="flex-grow">
           <HeroSection /> 
-          <WorkflowSection /> {/* The clear, three-stage workflow */}
+          <WorkflowSection /> 
+          <CaseStudiesSection /> {/* The visual proof of project excellence */}
           {/* All subsequent sections will follow here */}
         </main>
         
