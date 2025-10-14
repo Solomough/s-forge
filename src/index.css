@@ -1,13 +1,14 @@
+/* Tailwind Directives - Mandatory for Tailwind to function */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Example: Setting a smooth scroll and a default background color */
-html {
-    scroll-behavior: smooth;
+/* Custom or utility styles can go below here if needed */
+
+/* Ensure the base background color is set for the whole page */
+body {
+    @apply bg-s-background text-s-primary; /* Sets the default theme */
 }
 
-body {
-    /* Updated to use S-Forge brand colors for default styling */
-    @apply bg-s-background text-s-text antialiased; 
-}
+/* You might need to add font import if using a specific Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
