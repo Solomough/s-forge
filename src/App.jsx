@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import SiteHeader from './components/SiteHeader.jsx'; 
-import HeroSection from './components/HeroSection.jsx'; // Import the new Hero component
-// We can now remove PlaceholderFooter import entirely since we'll build a branded one later
+import HeroSection from './components/HeroSection.jsx'; 
+import WorkflowSection from './components/WorkflowSection.jsx'; // Import the new Workflow component
 
-// Framer Motion variant for smooth page transitions (keeping this for potential routing later)
+// Framer Motion variant for smooth page transitions
 const pageTransition = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
@@ -21,7 +21,6 @@ function App() {
         initial="initial"
         animate="animate"
         exit="exit"
-        // Ensure the main container adheres to the brand background color
         className="min-h-screen bg-s-background flex flex-col font-sans" 
       >
         {/* 1. The Fixed Header */}
@@ -29,8 +28,9 @@ function App() {
         
         {/* 2. Main Content Area */}
         <main className="flex-grow">
-          <HeroSection /> {/* The high-impact, branded Hero */}
-          {/* All subsequent sections will follow here (Strategy, Build, Market, etc.) */}
+          <HeroSection /> 
+          <WorkflowSection /> {/* The clear, three-stage workflow */}
+          {/* All subsequent sections will follow here */}
         </main>
         
         {/* We will build the final branded footer here next */}
@@ -41,4 +41,3 @@ function App() {
 }
 
 export default App;
-        
