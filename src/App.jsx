@@ -1,9 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
 
-// Import the two main views - LandingPage replaces all the previous section imports
+// Import all required views/interfaces
 import LandingPage from './components/LandingPage.jsx'; 
 import StrategyInterface from './components/StrategyInterface.jsx'; 
+import BuildEngineDetails from './components/BuildEngineDetails.jsx'; // Placeholder for Build Engine
+import MarketEngineDetails from './components/MarketEngineDetails.jsx'; // Placeholder for Market Engine
+import ProjectsHistory from './components/ProjectsHistory.jsx'; // Placeholder for Projects History
 
 // Framer Motion variant for smooth page transitions
 const pageTransition = {
@@ -13,17 +16,29 @@ const pageTransition = {
 };
 
 function App() {
-  // Simple state to control which view is rendered
+  // State controls which view is rendered: 
+  // 'landing', 'strategy-tool', 'build-details', 'market-details', 'projects-history'
   const [currentView, setCurrentView] = useState('landing'); 
 
-  // Function passed down to the LandingPage to trigger the view switch
+  // 1. Handler to launch the Strategy Tool (used by Hero CTA and Header/Menu)
   const handleLaunchTool = () => {
-    setCurrentView('tool');
+    setCurrentView('strategy-tool');
+  };
+  
+  // 2. Handler for generic internal navigation (used by Header/Menu and Workflow CTAs)
+  const handleViewEngine = (engineKey) => {
+    setCurrentView(engineKey);
+  };
+  
+  // 3. Handler to return to the landing page (used by internal detail pages)
+  const handleReturnToLanding = () => {
+    setCurrentView('landing');
   };
 
   return (
     <AnimatePresence mode="wait" initial={false}>
-      {/* View 1: Marketing Landing Page */}
+      
+      {/* 1. Marketing Landing Page View */}
       {currentView === 'landing' && (
         <motion.div 
           key="landing"
@@ -33,22 +48,69 @@ function App() {
           exit="exit"
           className="min-h-screen bg-s-background flex flex-col font-sans" 
         >
-          {/* LandingPage component renders all marketing sections */}
-          <LandingPage onLaunchTool={handleLaunchTool} /> 
+          <LandingPage 
+            onLaunchTool={handleLaunchTool} 
+            onViewEngine={handleViewEngine} 
+          /> 
         </motion.div>
       )}
 
-      {/* View 2: S-Forge Strategy Tool Interface */}
-      {currentView === 'tool' && (
+      {/* 2. S-Forge Strategy Tool Interface View */}
+      {currentView === 'strategy-tool' && (
         <motion.div 
-          key="tool"
+          key="strategy-tool" // Updated key for consistency
           variants={pageTransition}
           initial="initial"
           animate="animate"
           exit="exit"
           className="min-h-screen flex flex-col font-sans" 
         >
-          <StrategyInterface /> 
+          <StrategyInterface 
+             onReturnToLanding={handleReturnToLanding} 
+             onViewEngine={handleViewEngine} // Used for transition to Build Engine
+          /> 
+        </motion.div>
+      )}
+      
+      {/* 3. Build Engine Details View */}
+      {currentView === 'build-details' && (
+        <motion.div 
+          key="build"
+          variants={pageTransition}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="min-h-screen flex flex-col font-sans" 
+        >
+          <BuildEngineDetails onReturnToLanding={handleReturnToLanding} /> 
+        </motion.div>
+      )}
+      
+      {/* 4. Market Engine Details View */}
+      {currentView === 'market-details' && (
+        <motion.div 
+          key="market"
+          variants={pageTransition}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="min-h-screen flex flex-col font-sans" 
+        >
+          <MarketEngineDetails onReturnToLanding={handleReturnToLanding} /> 
+        </motion.div>
+      )}
+      
+      {/* 5. Projects History View */}
+      {currentView === 'projects-history' && (
+        <motion.div 
+          key="history"
+          variants={pageTransition}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="min-h-screen flex flex-col font-sans" 
+        >
+          <ProjectsHistory onReturnToLanding={handleReturnToLanding} /> 
         </motion.div>
       )}
     </AnimatePresence>
