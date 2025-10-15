@@ -2,9 +2,13 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import SiteHeader from './SiteHeader.jsx'; 
-import { collection, addDoc, getFirestore } from 'firebase/firestore'; 
-import { User } from 'firebase/auth';
+import { collection, addDoc } from 'firebase/firestore'; // Removed getFirestore as it's passed via props
+import { User } from 'firebase/auth'; // Keep for type-checking reference
 import { marked } from 'marked'; // For rendering Markdown output
+
+// --- GLOBAL CONSTANTS ---
+// CRITICAL: Get the Gemini API Key from the global context/environment
+const geminiApiKey = typeof __gemini_api_key !== 'undefined' ? __gemini_api_key : null;
 
 // Utility function to handle API calls with network resilience
 const fetchWithExponentialBackoff = async (apiUrl, payload, retries = 5, delay = 1000) => {
@@ -19,15 +23,20 @@ const fetchWithExponentialBackoff = async (apiUrl, payload, retries = 5, delay =
             if (!response.ok) {
                 // Throw an error to trigger retry logic, unless it's a 4xx error (user error)
                 if (response.status >= 400 && response.status < 500) {
-                    throw new Error(`Client Error: ${response.statusText}`, { cause: 'no_retry' });
+                    // Check if the error is due to missing key (400 or 403 often indicates this for Gemini)
+                    const errorBody = await response.json().catch(() => ({}));
+                    if (response.status === 400 && errorBody.error?.message?.includes('API key not valid')) {
+                        throw new Error(`API Key Error: Check __gemini_api_key environment variable.`, { cause: 'fatal' });
+                    }
+                    throw new Error(`Client Error: ${response.status} - ${response.statusText}`, { cause: 'no_retry' });
                 }
                 throw new Error(`API call failed with status: ${response.status}`);
             }
 
             return await response.json();
         } catch (error) {
-            if (error.cause === 'no_retry' || i === retries - 1) {
-                console.error("Fetch failed after all retries or due to client error:", error);
+            if (error.cause === 'fatal' || error.cause === 'no_retry' || i === retries - 1) {
+                console.error("Fetch failed after all retries or due to client/fatal error:", error);
                 throw error;
             }
             // Wait for exponentially increasing time
@@ -51,7 +60,7 @@ const promptVariants = {
   exit: { opacity: 0, y: -10 }
 };
 
-const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
+const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignOut, onOpenAuthModal }) => {
   const [currentStep, setCurrentStep] = useState(0); 
   const [answers, setAnswers] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
@@ -116,11 +125,19 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
       // Move to the next question
       setCurrentStep(prev => prev + 1);
     } else if (currentStep === strategyQuestions.length - 1) {
+      
+      // CRITICAL: Check for API Key BEFORE making the call
+      if (!geminiApiKey) {
+          setProcessError("Fatal Error: Gemini API Key is missing. Check the __gemini_api_key environment variable.");
+          return;
+      }
+      
       // Final question answered: Start Processing Phase and API Call
       setIsProcessing(true);
       
       const userQuery = constructGeminiPrompt(answers);
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`; // API Key is handled by Canvas
+      // CORRECTED: Appending the API key directly to the URL from the global constant
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`; 
 
       const systemPrompt = "Act as S-Forge, a world-class AI Digital Strategy Consultant. Your goal is to analyze the user's input and generate a highly detailed and actionable Project Blueprint in clean Markdown format. The Blueprint must contain four sections: **1. Project Vision (Summary)**, **2. Technical Blueprint (Tech Stack & Files)**, **3. Content Strategy (Messaging)**, and **4. Next Steps (Build Engine Readiness)**. Ensure the final output is styled beautifully using only Markdown.";
       
@@ -134,6 +151,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
         const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text || 
                              "Error: Failed to generate a meaningful blueprint. Please try again.";
         
+        // Before setting the text, ensure it is saved
         setBlueprintText(generatedText);
         
         // 1. Save the generated blueprint to Firestore
@@ -145,7 +163,12 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
         console.log("[STRATEGY ENGINE] Project Blueprint Generated and Saved.");
 
       } catch (e) {
-        setProcessError("Failed to generate Blueprint. Check your network or try again.");
+          let errorMessage = "Failed to generate Blueprint. Check your network or try again.";
+          // Enhance error message if it's the specific API key error
+          if (e.message.includes('API Key Error')) {
+              errorMessage = e.message;
+          }
+        setProcessError(errorMessage);
         setIsProcessing(false);
         console.error("Gemini API Error:", e);
       }
@@ -162,8 +185,8 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
   
   // Transition to the Build Engine Details page
   const launchBuildCanvas = () => {
-      // Here you would typically pass the blueprintText and currentProjectId to the next view
-      onViewEngine('build-details');
+      // Pass the currentProjectId to the next view
+      onViewEngine('build-details', currentProjectId); 
       console.log(`[S-FORGE] Transitioning to Build Canvas for Project ID: ${currentProjectId}`);
   }
 
@@ -181,7 +204,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
                 className="text-center"
               >
                 <p className="text-s-accent text-2xl mb-4">⚙️ **Strategy Complete!**</p>
-                <h2 className="text-4xl font-extrabold text-s-background mb-6">
+                <h2 className="text-4xl font-extrabold text-white mb-6">
                   Analyzing Data & Compiling Project Blueprint...
                 </h2>
                 <div className="mt-6 flex justify-center items-center space-x-4">
@@ -202,7 +225,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
                 className="text-left"
               >
                 <p className="text-s-accent text-2xl mb-4">✅ **Blueprint Ready: Output 1/3 Complete!**</p>
-                <h2 className="text-4xl font-extrabold text-s-background mb-6">
+                <h2 className="text-4xl font-extrabold text-white mb-6">
                   Project Blueprint Generated
                 </h2>
                 
@@ -215,7 +238,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
                     />
                 </div>
                 
-                <h2 className="text-2xl font-extrabold text-s-background mt-8 mb-4 text-center">
+                <h2 className="text-2xl font-extrabold text-white mt-8 mb-4 text-center">
                     Initiate the Build Engine
                 </h2>
 
@@ -238,7 +261,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
                 exit="exit"
               >
                 <p className="text-s-accent text-lg mb-2 font-medium">S-Forge Question {currentStep + 1} of {strategyQuestions.length}:</p>
-                <h2 className="text-3xl font-extrabold text-s-background mb-6">
+                <h2 className="text-3xl font-extrabold text-white mb-6">
                   {currentQuestion.prompt}
                 </h2>
 
@@ -310,12 +333,15 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
           .blueprint-viewer strong { @apply text-s-accent font-bold; }
         `}
       </style>
-      <div className="min-h-screen bg-gray-900 text-s-background flex flex-col">
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
         
         {/* 1. Global Header for navigation consistency */}
         <SiteHeader 
           onLaunchTool={() => onViewEngine('strategy-tool')} 
           onViewEngine={onViewEngine} 
+          currentUser={currentUser} // Passed for sign-in/sign-out logic
+          onSignOut={onSignOut}
+          onOpenAuthModal={onOpenAuthModal}
         />
 
         {/* Main Conversational Area - uses pt-20 to clear fixed header */}
@@ -333,4 +359,3 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
 };
 
 export default StrategyInterface;
-          
