@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+// We need to import the SiteHeader to ensure consistent navigation
+import SiteHeader from './SiteHeader.jsx'; 
+import { AlertTriangle } from 'lucide-react'; // For the input validation
 
 // S-Forge Core Questions (from our Stage 1 Strategy)
 const strategyQuestions = [
@@ -12,25 +15,29 @@ const strategyQuestions = [
 
 const promptVariants = {
   hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 120 } }
+  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 120 } },
+  exit: { opacity: 0, y: -10 }
 };
 
-const StrategyInterface = () => {
+const StrategyInterface = ({ onViewEngine }) => {
   const [currentStep, setCurrentStep] = useState(0); // 0-4 are questions
   const [answers, setAnswers] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isBlueprintReady, setIsBlueprintReady] = useState(false); // New state for final transition
+  const [isBlueprintReady, setIsBlueprintReady] = useState(false);
+  const [inputError, setInputError] = useState(null);
 
   const currentQuestion = strategyQuestions[currentStep];
 
   const handleNext = (e) => {
     e.preventDefault();
     
-    // Check if current answer is empty before proceeding
-    if (currentStep < strategyQuestions.length && !answers[currentQuestion.id]) {
-      alert("Please provide an answer before moving to the next question.");
+    // Custom validation (replacing alert())
+    if (currentStep < strategyQuestions.length && !answers[currentQuestion.id]?.trim()) {
+      setInputError("Your strategist requires input to proceed. Please provide a detailed answer.");
       return;
     }
+    
+    setInputError(null);
 
     if (currentStep < strategyQuestions.length - 1) {
       // Move to the next question
@@ -44,6 +51,7 @@ const StrategyInterface = () => {
       setTimeout(() => {
         setIsProcessing(false);
         setIsBlueprintReady(true);
+        // This is where the actual API call will go in the backend phase
         console.log("[STRATEGY ENGINE] Project Blueprint Generated. Ready for Build Engine.");
       }, 3500); // 3.5 second simulated processing time
     }
@@ -54,11 +62,14 @@ const StrategyInterface = () => {
       ...answers,
       [currentQuestion.id]: value
     });
+    // Clear error message when user starts typing
+    if (inputError) setInputError(null); 
   };
   
-  // Placeholder for triggering the next phase (Build Engine)
+  // New: Function to transition to the Build Engine Details page
   const launchBuildCanvas = () => {
-      alert("Launching Build Canvas! (Simulation). In a real application, the generated code files would now appear in the editor.");
+      // Navigates to the Build Engine Details view using the App router
+      onViewEngine('build-details');
       console.log("[S-FORGE] Transitioning to Build Canvas with Blueprint Data.");
   }
 
@@ -73,6 +84,7 @@ const StrategyInterface = () => {
                 variants={promptVariants}
                 initial="hidden"
                 animate="visible"
+                exit="exit"
                 className="text-center"
               >
                 <p className="text-s-accent text-2xl mb-4">⚙️ **Strategy Complete!**</p>
@@ -93,6 +105,7 @@ const StrategyInterface = () => {
                 variants={promptVariants}
                 initial="hidden"
                 animate="visible"
+                exit="exit"
                 className="text-center"
               >
                 <p className="text-s-accent text-2xl mb-4">✅ **Blueprint Ready: Output 1/3 Complete!**</p>
@@ -119,7 +132,7 @@ const StrategyInterface = () => {
                 variants={promptVariants}
                 initial="hidden"
                 animate="visible"
-                exit="hidden"
+                exit="exit"
               >
                 <p className="text-s-accent text-lg mb-2 font-medium">S-Forge Question {currentStep + 1} of {strategyQuestions.length}:</p>
                 <h2 className="text-3xl font-extrabold text-s-background mb-6">
@@ -135,6 +148,18 @@ const StrategyInterface = () => {
                     required
                     className="w-full p-4 rounded-lg bg-gray-700 text-white border border-gray-600 focus:border-s-accent focus:ring-1 focus:ring-s-accent transition duration-300"
                   />
+
+                  {inputError && (
+                    <motion.p 
+                        initial={{ opacity: 0, y: 5 }} 
+                        animate={{ opacity: 1, y: 0 }} 
+                        className="flex items-center space-x-2 text-red-400 mt-2 text-sm font-medium"
+                    >
+                        <AlertTriangle className="w-4 h-4"/>
+                        <span>{inputError}</span>
+                    </motion.p>
+                  )}
+
                   <div className="flex justify-end mt-4">
                     <button
                       type="submit"
@@ -151,22 +176,16 @@ const StrategyInterface = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-900 text-s-background flex flex-col pt-20">
+    <div className="min-h-screen bg-gray-900 text-s-background flex flex-col">
       
-      {/* Strategy Header */}
-      <header className="py-6 bg-s-primary shadow-lg border-b border-s-accent/50">
-        <div className="container mx-auto px-4">
-          <h1 className="text-3xl font-bold text-s-accent">
-            <span className="text-s-background">S-Forge</span> Strategy Engine
-          </h1>
-          <p className="text-sm text-gray-400 mt-1">
-            Phase: {isBlueprintReady ? 'Blueprint Ready' : isProcessing ? 'Processing' : `Strategy Collection`}
-          </p>
-        </div>
-      </header>
+      {/* 1. Global Header for navigation consistency */}
+      <SiteHeader 
+        onLaunchTool={() => onViewEngine('strategy-tool')} // Allows user to restart the tool
+        onViewEngine={onViewEngine} 
+      />
 
-      {/* Main Conversational Area */}
-      <main className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center">
+      {/* Main Conversational Area - uses pt-20 to clear fixed header */}
+      <main className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center pt-32"> 
         <div className="w-full max-w-3xl bg-gray-800 p-8 rounded-2xl shadow-2xl border border-s-accent/20">
 
           <AnimatePresence mode="wait">
