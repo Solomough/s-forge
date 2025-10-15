@@ -5,14 +5,19 @@ import CaseStudiesSection from './CaseStudiesSection.jsx';
 import CallToActionSection from './CallToActionSection.jsx'; 
 import SiteFooter from './SiteFooter.jsx'; 
 
-const LandingPage = ({ onLaunchTool }) => {
+// Accepts both navigation handlers
+const LandingPage = ({ onLaunchTool, onViewEngine }) => {
   return (
     <>
-      <SiteHeader onLaunchTool={onLaunchTool} />
-      <main className="flex-grow">
-        {/* We need to update the Hero CTA to use the onLaunchTool prop */}
+      {/* Pass both navigation props to the header */}
+      <SiteHeader 
+        onLaunchTool={onLaunchTool} 
+        onViewEngine={onViewEngine} 
+      />
+      <main className="flex-grow pt-20"> {/* Added pt-20 to push content below the fixed header */}
         <HeroSection onLaunchTool={onLaunchTool} /> 
-        <WorkflowSection /> 
+        {/* Pass onViewEngine down so WorkflowSection CTAs can navigate */}
+        <WorkflowSection onViewEngine={onViewEngine} /> 
         <CaseStudiesSection /> 
         <CallToActionSection /> 
       </main>
