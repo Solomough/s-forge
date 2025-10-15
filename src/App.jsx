@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 
 // FIREBASE IMPORTS
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, User } from 'firebase/auth';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 // import { setLogLevel } from 'firebase/firestore'; // Optional: Use for debugging if needed
 
@@ -13,6 +13,7 @@ import StrategyInterface from './components/StrategyInterface.jsx';
 import BuildEngineDetails from './components/BuildEngineDetails.jsx'; 
 import MarketEngineDetails from './components/MarketEngineDetails.jsx'; 
 import ProjectsHistory from './components/ProjectsHistory.jsx'; 
+import AuthModal from './components/AuthModal.jsx'; // CRITICAL: Import Auth Modal
 
 // Framer Motion variant for smooth page transitions
 const pageTransition = {
@@ -28,6 +29,9 @@ function App() {
   const [auth, setAuth] = useState(null);
   const [currentUser, setCurrentUser] = useState(/** @type {User | null | undefined} */(undefined)); // undefined = loading
   const isAuthReady = currentUser !== undefined; // True once Firebase auth status is known
+  
+  // State for the Auth Modal
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   
   // State to hold the ID of the project being worked on for deep linking between steps
   const [activeProjectId, setActiveProjectId] = useState(null); 
@@ -85,6 +89,22 @@ function App() {
     }
   }, [appId]);
   
+  // --- AUTH HANDLERS ---
+  const handleSignOut = async () => {
+    if (auth) {
+        try {
+            await signOut(auth);
+            // After sign out, the onAuthStateChanged listener will handle the new state (usually anonymous sign-in)
+            setCurrentView('landing'); // Return to landing page after sign out
+        } catch (error) {
+            console.error("Error signing out:", error);
+        }
+    }
+  };
+  
+  const onOpenAuthModal = () => setIsAuthModalOpen(true);
+  const onCloseAuthModal = () => setIsAuthModalOpen(false);
+  
   // --- NAVIGATION HANDLERS ---
   const handleLaunchTool = () => { setCurrentView('strategy-tool'); };
   
@@ -117,115 +137,86 @@ function App() {
 
   // Once Firebase is ready, render the application based on the current view
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      
-      {/* 1. Marketing Landing Page View */}
-      {currentView === 'landing' && (
-        <motion.div 
-          key="landing"
-          variants={pageTransition}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          className="min-h-screen bg-s-background flex flex-col font-sans" 
-        >
-          <LandingPage 
-            onLaunchTool={handleLaunchTool} 
-            onViewEngine={handleViewEngine} 
-          /> 
-        </motion.div>
-      )}
-
-      {/* 2. S-Forge Strategy Tool Interface View */}
-      {currentView === 'strategy-tool' && (
-        <motion.div 
-          key="strategy-tool" 
-          variants={pageTransition}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          className="min-h-screen flex flex-col font-sans" 
-        >
-          <StrategyInterface 
-             onReturnToLanding={handleReturnToLanding} 
-             onViewEngine={handleViewEngine}
-             db={db}
-             auth={auth}
-             currentUser={currentUser}
-             appId={appId}
-             setActiveProjectId={setActiveProjectId} // Passed down to store new project ID
-          /> 
-        </motion.div>
-      )}
-      
-      {/* 3. Build Engine Details View */}
-      {currentView === 'build-details' && (
-        <motion.div 
-          key="build"
-          variants={pageTransition}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          className="min-h-screen flex flex-col font-sans" 
-        >
-          <BuildEngineDetails 
-            onReturnToLanding={handleReturnToLanding} 
-            onViewEngine={handleViewEngine} 
-            db={db} // CRITICAL: Pass Firebase props
-            auth={auth}
-            currentUser={currentUser}
-            appId={appId}
-            projectId={activeProjectId} // CRITICAL: Pass the context of the project
-          /> 
-        </motion.div>
-      )}
-      
-      {/* 4. Market Engine Details View */}
-      {currentView === 'market-details' && (
-        <motion.div 
-          key="market"
-          variants={pageTransition}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          className="min-h-screen flex flex-col font-sans" 
-        >
-          <MarketEngineDetails 
-            onReturnToLanding={handleReturnToLanding} 
-            onViewEngine={handleViewEngine} 
-            db={db} // Pass Firebase props
-            auth={auth}
-            currentUser={currentUser}
-            appId={appId}
-            projectId={activeProjectId}
-          /> 
-        </motion.div>
-      )}
-      
-      {/* 5. Projects History View */}
-      {currentView === 'projects-history' && (
-        <motion.div 
-          key="history"
-          variants={pageTransition}
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          className="min-h-screen flex flex-col font-sans" 
-        >
-          <ProjectsHistory 
-            onReturnToLanding={handleReturnToLanding} 
-            onViewEngine={handleViewEngine} 
-            db={db} // CRITICAL: Pass Firebase props
-            auth={auth}
-            currentUser={currentUser}
-            appId={appId}
-            setActiveProjectId={setActiveProjectId} // To load context if user selects a project
-          /> 
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-export default App;
+    <>
+        <AnimatePresence mode="wait" initial={false}>
         
+        {/* 1. Marketing Landing Page View */}
+        {currentView === 'landing' && (
+            <motion.div 
+            key="landing"
+            variants={pageTransition}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="min-h-screen bg-s-background flex flex-col font-sans" 
+            >
+            <LandingPage 
+                onLaunchTool={handleLaunchTool} 
+                onViewEngine={handleViewEngine} 
+                currentUser={currentUser} // Pass for header
+                onSignOut={handleSignOut} // Pass for header
+                onOpenAuthModal={onOpenAuthModal} // Pass for header
+            /> 
+            </motion.div>
+        )}
+
+        {/* 2. S-Forge Strategy Tool Interface View */}
+        {currentView === 'strategy-tool' && (
+            <motion.div 
+            key="strategy-tool" 
+            variants={pageTransition}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="min-h-screen flex flex-col font-sans" 
+            >
+            <StrategyInterface 
+                onReturnToLanding={handleReturnToLanding} 
+                onViewEngine={handleViewEngine}
+                db={db}
+                auth={auth}
+                currentUser={currentUser}
+                appId={appId}
+                setActiveProjectId={setActiveProjectId}
+                onSignOut={handleSignOut} // Pass for header
+                onOpenAuthModal={onOpenAuthModal} // Pass for header
+            /> 
+            </motion.div>
+        )}
+        
+        {/* 3. Build Engine Details View */}
+        {currentView === 'build-details' && (
+            <motion.div 
+            key="build"
+            variants={pageTransition}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="min-h-screen flex flex-col font-sans" 
+            >
+            <BuildEngineDetails 
+                onReturnToLanding={handleReturnToLanding} 
+                onViewEngine={handleViewEngine} 
+                db={db}
+                auth={auth}
+                currentUser={currentUser}
+                appId={appId}
+                projectId={activeProjectId}
+                onSignOut={handleSignOut} // Pass for header
+                onOpenAuthModal={onOpenAuthModal} // Pass for header
+            /> 
+            </motion.div>
+        )}
+        
+        {/* 4. Market Engine Details View */}
+        {currentView === 'market-details' && (
+            <motion.div 
+            key="market"
+            variants={pageTransition}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="min-h-screen flex flex-col font-sans" 
+            >
+            <MarketEngineDetails 
+                onReturnT
