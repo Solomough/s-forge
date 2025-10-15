@@ -1,12 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+// FIREBASE IMPORTS
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, User } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+// import { setLogLevel } from 'firebase/firestore'; // Optional: Use for debugging if needed
 
 // Import all required views/interfaces
 import LandingPage from './components/LandingPage.jsx'; 
 import StrategyInterface from './components/StrategyInterface.jsx'; 
-import BuildEngineDetails from './components/BuildEngineDetails.jsx'; // Placeholder for Build Engine
-import MarketEngineDetails from './components/MarketEngineDetails.jsx'; // Placeholder for Market Engine
-import ProjectsHistory from './components/ProjectsHistory.jsx'; // Placeholder for Projects History
+import BuildEngineDetails from './components/BuildEngineDetails.jsx'; 
+import MarketEngineDetails from './components/MarketEngineDetails.jsx'; 
+import ProjectsHistory from './components/ProjectsHistory.jsx'; 
 
 // Framer Motion variant for smooth page transitions
 const pageTransition = {
@@ -16,29 +22,93 @@ const pageTransition = {
 };
 
 function App() {
-  // State controls which view is rendered: 
-  // 'landing', 'strategy-tool', 'build-details', 'market-details', 'projects-history'
+  // --- STATE MANAGEMENT ---
   const [currentView, setCurrentView] = useState('landing'); 
-
-  // 1. Handler to launch the Strategy Tool (used by Hero CTA and Header/Menu)
-  const handleLaunchTool = () => {
-    setCurrentView('strategy-tool');
-  };
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
+  const [currentUser, setCurrentUser] = useState(/** @type {User | null | undefined} */(undefined)); // undefined = loading
+  const isAuthReady = currentUser !== undefined; // True once Firebase auth status is known
   
-  // 2. Handler for generic internal navigation (used by Header/Menu and Workflow CTAs)
-  const handleViewEngine = (engineKey) => {
-    setCurrentView(engineKey);
-  };
-  
-  // 3. Handler to return to the landing page (used by internal detail pages)
-  const handleReturnToLanding = () => {
-    setCurrentView('landing');
-  };
+  // Unique ID generator for unauthenticated users/paths
+  const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
+  // --- FIREBASE INITIALIZATION & AUTHENTICATION ---
+  useEffect(() => {
+    // setLogLevel('debug'); // Enable for debugging
+    
+    try {
+      // 1. Configuration Check
+      const firebaseConfigString = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+      const firebaseConfig = JSON.parse(firebaseConfigString);
+      if (Object.keys(firebaseConfig).length === 0) {
+        console.error("Firebase config is empty. Cannot initialize services.");
+        // Treat as ready if config is missing to allow UI rendering
+        setCurrentUser(null);
+        return;
+      }
+      
+      // 2. Initialize App and Services
+      const app = initializeApp(firebaseConfig);
+      const firestore = getFirestore(app);
+      const authService = getAuth(app);
+      
+      setDb(firestore);
+      setAuth(authService);
+
+      // 3. Authentication Listener
+      const unsubscribe = onAuthStateChanged(authService, async (user) => {
+        if (user) {
+          // User is signed in (authenticated or custom token used)
+          setCurrentUser(user);
+        } else if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          // Use custom token if provided
+          try {
+            await signInWithCustomToken(authService, __initial_auth_token);
+          } catch (error) {
+            console.error("Error signing in with custom token, signing in anonymously:", error);
+            await signInAnonymously(authService);
+          }
+        } else {
+          // No token provided, sign in anonymously for access to public rules
+          await signInAnonymously(authService);
+        }
+      });
+
+      return () => unsubscribe();
+      
+    } catch (e) {
+      console.error("Error initializing Firebase:", e);
+      setCurrentUser(null); // Stop loading if error occurs
+    }
+  }, [appId]);
+  
+  // --- NAVIGATION HANDLERS ---
+  const handleLaunchTool = () => { setCurrentView('strategy-tool'); };
+  const handleViewEngine = (engineKey) => { setCurrentView(engineKey); };
+  const handleReturnToLanding = () => { setCurrentView('landing'); };
+
+
+  // --- RENDERING LOGIC ---
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center text-s-accent">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 border-4 border-t-4 border-t-s-accent border-gray-700 rounded-full mx-auto mb-4"
+          />
+          <p className="text-lg font-medium">Forging connection to S-Forge Core...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Once Firebase is ready, render the application based on the current view
   return (
     <AnimatePresence mode="wait" initial={false}>
       
-      {/* 1. Marketing Landing Page View (Root Router) */}
+      {/* 1. Marketing Landing Page View */}
       {currentView === 'landing' && (
         <motion.div 
           key="landing"
@@ -67,7 +137,11 @@ function App() {
         >
           <StrategyInterface 
              onReturnToLanding={handleReturnToLanding} 
-             onViewEngine={handleViewEngine} // Critical for navigating to Build Engine
+             onViewEngine={handleViewEngine}
+             db={db} // Pass db and auth down
+             auth={auth}
+             currentUser={currentUser}
+             appId={appId}
           /> 
         </motion.div>
       )}
@@ -82,6 +156,7 @@ function App() {
           exit="exit"
           className="min-h-screen flex flex-col font-sans" 
         >
+          {/* Note: BuildEngineDetails doesn't strictly need db/auth yet, but we pass it for future proofing */}
           <BuildEngineDetails onReturnToLanding={handleReturnToLanding} onViewEngine={handleViewEngine} /> 
         </motion.div>
       )}
@@ -118,3 +193,4 @@ function App() {
 }
 
 export default App;
+      
