@@ -5,15 +5,14 @@ import { useEffect, useState } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, User, signOut } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
-// import { setLogLevel } from 'firebase/firestore'; // Optional: Use for debugging if needed
 
 // Import all required views/interfaces
 import LandingPage from './components/LandingPage.jsx'; 
 import StrategyInterface from './components/StrategyInterface.jsx'; 
-import BuildEngineDetails from './components/BuildEngineDetails.jsx'; 
+import BuildEngineDetails from './components/BuildEngineDetails.jsx'; // This is now the functional Build Engine
 import MarketEngineDetails from './components/MarketEngineDetails.jsx'; 
 import ProjectsHistory from './components/ProjectsHistory.jsx'; 
-import AuthModal from './components/AuthModal.jsx'; // CRITICAL: Import Auth Modal
+import AuthModal from './components/AuthModal.jsx'; 
 
 // Framer Motion variant for smooth page transitions
 const pageTransition = {
@@ -27,7 +26,8 @@ function App() {
   const [currentView, setCurrentView] = useState('landing'); 
   const [db, setDb] = useState(null);
   const [auth, setAuth] = useState(null);
-  const [currentUser, setCurrentUser] = useState(/** @type {User | null | undefined} */(undefined)); // undefined = loading
+  // Using undefined for loading state
+  const [currentUser, setCurrentUser] = useState(/** @type {User | null | undefined} */(undefined)); 
   const isAuthReady = currentUser !== undefined; // True once Firebase auth status is known
   
   // State for the Auth Modal
@@ -49,7 +49,6 @@ function App() {
       const firebaseConfig = JSON.parse(firebaseConfigString);
       if (Object.keys(firebaseConfig).length === 0) {
         console.error("Firebase config is empty. Cannot initialize services.");
-        // Treat as ready if config is missing to allow UI rendering
         setCurrentUser(null);
         return;
       }
@@ -65,7 +64,6 @@ function App() {
       // 3. Authentication Listener
       const unsubscribe = onAuthStateChanged(authService, async (user) => {
         if (user) {
-          // User is signed in (authenticated or custom token used)
           setCurrentUser(user);
         } else if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
           // Use custom token if provided
@@ -94,7 +92,6 @@ function App() {
     if (auth) {
         try {
             await signOut(auth);
-            // After sign out, the onAuthStateChanged listener will handle the new state (usually anonymous sign-in)
             setCurrentView('landing'); // Return to landing page after sign out
         } catch (error) {
             console.error("Error signing out:", error);
@@ -135,7 +132,6 @@ function App() {
     );
   }
 
-  // Once Firebase is ready, render the application based on the current view
   return (
     <>
         <AnimatePresence mode="wait" initial={false}>
@@ -153,9 +149,9 @@ function App() {
             <LandingPage 
                 onLaunchTool={handleLaunchTool} 
                 onViewEngine={handleViewEngine} 
-                currentUser={currentUser} // Pass for header
-                onSignOut={handleSignOut} // Pass for header
-                onOpenAuthModal={onOpenAuthModal} // Pass for header
+                currentUser={currentUser}
+                onSignOut={handleSignOut}
+                onOpenAuthModal={onOpenAuthModal}
             /> 
             </motion.div>
         )}
@@ -177,14 +173,15 @@ function App() {
                 auth={auth}
                 currentUser={currentUser}
                 appId={appId}
-                setActiveProjectId={setActiveProjectId}
-                onSignOut={handleSignOut} // Pass for header
-                onOpenAuthModal={onOpenAuthModal} // Pass for header
+                // setActiveProjectId is correctly passed to allow setting the ID on save
+                setActiveProjectId={setActiveProjectId} 
+                onSignOut={handleSignOut} 
+                onOpenAuthModal={onOpenAuthModal}
             /> 
             </motion.div>
         )}
         
-        {/* 3. Build Engine Details View */}
+        {/* 3. Build Engine View (Note: file is named BuildEngineDetails.jsx) */}
         {currentView === 'build-details' && (
             <motion.div 
             key="build"
@@ -201,14 +198,15 @@ function App() {
                 auth={auth}
                 currentUser={currentUser}
                 appId={appId}
-                projectId={activeProjectId}
-                onSignOut={handleSignOut} // Pass for header
-                onOpenAuthModal={onOpenAuthModal} // Pass for header
+                // CRITICAL: Passing the ID of the project created in the Strategy Engine
+                projectId={activeProjectId} 
+                onSignOut={handleSignOut}
+                onOpenAuthModal={onOpenAuthModal}
             /> 
             </motion.div>
         )}
         
-        {/* 4. Market Engine Details View */}
+        {/* 4. Market Engine View */}
         {currentView === 'market-details' && (
             <motion.div 
             key="market"
@@ -226,8 +224,8 @@ function App() {
                 currentUser={currentUser}
                 appId={appId}
                 projectId={activeProjectId}
-                onSignOut={handleSignOut} // Pass for header
-                onOpenAuthModal={onOpenAuthModal} // Pass for header
+                onSignOut={handleSignOut}
+                onOpenAuthModal={onOpenAuthModal}
             /> 
             </motion.div>
         )}
@@ -250,14 +248,14 @@ function App() {
                 currentUser={currentUser}
                 appId={appId}
                 setActiveProjectId={setActiveProjectId}
-                onSignOut={handleSignOut} // Pass for header
-                onOpenAuthModal={onOpenAuthModal} // Pass for header
+                onSignOut={handleSignOut}
+                onOpenAuthModal={onOpenAuthModal}
             /> 
             </motion.div>
         )}
         </AnimatePresence>
         
-        {/* --- AUTHENTICATION MODAL (Always rendered outside the page transition) --- */}
+        {/* --- AUTHENTICATION MODAL --- */}
         {isAuthModalOpen && auth && (
             <AuthModal 
                 onClose={onCloseAuthModal} 
@@ -269,3 +267,4 @@ function App() {
 }
 
 export default App;
+      
