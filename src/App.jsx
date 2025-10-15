@@ -29,6 +29,9 @@ function App() {
   const [currentUser, setCurrentUser] = useState(/** @type {User | null | undefined} */(undefined)); // undefined = loading
   const isAuthReady = currentUser !== undefined; // True once Firebase auth status is known
   
+  // State to hold the ID of the project being worked on for deep linking between steps
+  const [activeProjectId, setActiveProjectId] = useState(null); 
+  
   // Unique ID generator for unauthenticated users/paths
   const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
@@ -84,7 +87,15 @@ function App() {
   
   // --- NAVIGATION HANDLERS ---
   const handleLaunchTool = () => { setCurrentView('strategy-tool'); };
-  const handleViewEngine = (engineKey) => { setCurrentView(engineKey); };
+  
+  // Generic handler for internal navigation, used by SiteHeader and internal CTAs
+  const handleViewEngine = (engineKey, projectId = null) => { 
+    if (projectId) {
+        setActiveProjectId(projectId); // Set active project for context
+    }
+    setCurrentView(engineKey); 
+  };
+  
   const handleReturnToLanding = () => { setCurrentView('landing'); };
 
 
@@ -138,10 +149,11 @@ function App() {
           <StrategyInterface 
              onReturnToLanding={handleReturnToLanding} 
              onViewEngine={handleViewEngine}
-             db={db} // Pass db and auth down
+             db={db}
              auth={auth}
              currentUser={currentUser}
              appId={appId}
+             setActiveProjectId={setActiveProjectId} // Passed down to store new project ID
           /> 
         </motion.div>
       )}
@@ -156,8 +168,15 @@ function App() {
           exit="exit"
           className="min-h-screen flex flex-col font-sans" 
         >
-          {/* Note: BuildEngineDetails doesn't strictly need db/auth yet, but we pass it for future proofing */}
-          <BuildEngineDetails onReturnToLanding={handleReturnToLanding} onViewEngine={handleViewEngine} /> 
+          <BuildEngineDetails 
+            onReturnToLanding={handleReturnToLanding} 
+            onViewEngine={handleViewEngine} 
+            db={db} // CRITICAL: Pass Firebase props
+            auth={auth}
+            currentUser={currentUser}
+            appId={appId}
+            projectId={activeProjectId} // CRITICAL: Pass the context of the project
+          /> 
         </motion.div>
       )}
       
@@ -171,7 +190,15 @@ function App() {
           exit="exit"
           className="min-h-screen flex flex-col font-sans" 
         >
-          <MarketEngineDetails onReturnToLanding={handleReturnToLanding} onViewEngine={handleViewEngine} /> 
+          <MarketEngineDetails 
+            onReturnToLanding={handleReturnToLanding} 
+            onViewEngine={handleViewEngine} 
+            db={db} // Pass Firebase props
+            auth={auth}
+            currentUser={currentUser}
+            appId={appId}
+            projectId={activeProjectId}
+          /> 
         </motion.div>
       )}
       
@@ -185,7 +212,15 @@ function App() {
           exit="exit"
           className="min-h-screen flex flex-col font-sans" 
         >
-          <ProjectsHistory onReturnToLanding={handleReturnToLanding} onViewEngine={handleViewEngine} /> 
+          <ProjectsHistory 
+            onReturnToLanding={handleReturnToLanding} 
+            onViewEngine={handleViewEngine} 
+            db={db} // CRITICAL: Pass Firebase props
+            auth={auth}
+            currentUser={currentUser}
+            appId={appId}
+            setActiveProjectId={setActiveProjectId} // To load context if user selects a project
+          /> 
         </motion.div>
       )}
     </AnimatePresence>
@@ -193,4 +228,4 @@ function App() {
 }
 
 export default App;
-      
+        
