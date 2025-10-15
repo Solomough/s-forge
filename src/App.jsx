@@ -218,5 +218,54 @@ function App() {
             exit="exit"
             className="min-h-screen flex flex-col font-sans" 
             >
-            <MarketEngineDetails
-                onReturnT/>
+            <MarketEngineDetails 
+                onReturnToLanding={handleReturnToLanding} 
+                onViewEngine={handleViewEngine} 
+                db={db}
+                auth={auth}
+                currentUser={currentUser}
+                appId={appId}
+                projectId={activeProjectId}
+                onSignOut={handleSignOut} // Pass for header
+                onOpenAuthModal={onOpenAuthModal} // Pass for header
+            /> 
+            </motion.div>
+        )}
+        
+        {/* 5. Projects History View */}
+        {currentView === 'projects-history' && (
+            <motion.div 
+            key="history"
+            variants={pageTransition}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="min-h-screen flex flex-col font-sans" 
+            >
+            <ProjectsHistory 
+                onReturnToLanding={handleReturnToLanding} 
+                onViewEngine={handleViewEngine} 
+                db={db}
+                auth={auth}
+                currentUser={currentUser}
+                appId={appId}
+                setActiveProjectId={setActiveProjectId}
+                onSignOut={handleSignOut} // Pass for header
+                onOpenAuthModal={onOpenAuthModal} // Pass for header
+            /> 
+            </motion.div>
+        )}
+        </AnimatePresence>
+        
+        {/* --- AUTHENTICATION MODAL (Always rendered outside the page transition) --- */}
+        {isAuthModalOpen && auth && (
+            <AuthModal 
+                onClose={onCloseAuthModal} 
+                auth={auth}
+            />
+        )}
+    </>
+  );
+}
+
+export default App;
