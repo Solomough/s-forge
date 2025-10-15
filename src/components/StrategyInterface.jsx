@@ -1,8 +1,40 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-// We need to import the SiteHeader to ensure consistent navigation
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import SiteHeader from './SiteHeader.jsx'; 
-import { AlertTriangle } from 'lucide-react'; // For the input validation
+import { collection, addDoc, getFirestore } from 'firebase/firestore'; 
+import { User } from 'firebase/auth';
+import { marked } from 'marked'; // For rendering Markdown output
+
+// Utility function to handle API calls with network resilience
+const fetchWithExponentialBackoff = async (apiUrl, payload, retries = 5, delay = 1000) => {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                // Throw an error to trigger retry logic, unless it's a 4xx error (user error)
+                if (response.status >= 400 && response.status < 500) {
+                    throw new Error(`Client Error: ${response.statusText}`, { cause: 'no_retry' });
+                }
+                throw new Error(`API call failed with status: ${response.status}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            if (error.cause === 'no_retry' || i === retries - 1) {
+                console.error("Fetch failed after all retries or due to client error:", error);
+                throw error;
+            }
+            // Wait for exponentially increasing time
+            await new Promise(resolve => setTimeout(resolve, delay * (2 ** i)));
+        }
+    }
+};
 
 // S-Forge Core Questions (from our Stage 1 Strategy)
 const strategyQuestions = [
@@ -19,19 +51,60 @@ const promptVariants = {
   exit: { opacity: 0, y: -10 }
 };
 
-const StrategyInterface = ({ onViewEngine }) => {
-  const [currentStep, setCurrentStep] = useState(0); // 0-4 are questions
+const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId }) => {
+  const [currentStep, setCurrentStep] = useState(0); 
   const [answers, setAnswers] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [isBlueprintReady, setIsBlueprintReady] = useState(false);
   const [inputError, setInputError] = useState(null);
+  const [blueprintText, setBlueprintText] = useState("");
+  const [processError, setProcessError] = useState(null);
+  const [currentProjectId, setCurrentProjectId] = useState(null);
 
   const currentQuestion = strategyQuestions[currentStep];
+  const userId = currentUser?.uid || 'anonymous';
+  
+  // Construct the full prompt for the Gemini API call
+  const constructGeminiPrompt = (userAnswers) => {
+    let prompt = "Generate a comprehensive Project Blueprint based on the following strategy answers:\n\n";
+    strategyQuestions.forEach(q => {
+        prompt += `Q${q.id}: ${q.prompt}\nA: ${userAnswers[q.id] || 'No Answer Provided'}\n\n`;
+    });
+    prompt += "Please ensure the output is pure, clean Markdown, ready for display.";
+    return prompt;
+  };
 
-  const handleNext = (e) => {
+  // Function to save the project data to Firestore
+  const saveProject = async (blueprint) => {
+    if (!db) return; // DB must be initialized
+
+    try {
+        const projectsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/projects`);
+        
+        const projectData = {
+            userId: userId,
+            createdAt: new Date(),
+            status: 'Blueprint Ready',
+            answers: answers, // Save raw user answers
+            blueprint: blueprint, // Save AI generated text
+            title: answers[1] || 'New Project Blueprint', // Use the core purpose as the title
+        };
+        
+        const docRef = await addDoc(projectsCollectionRef, projectData);
+        setCurrentProjectId(docRef.id);
+        console.log("Project Blueprint saved to Firestore:", docRef.id);
+
+    } catch (error) {
+        console.error("Error saving project to Firestore:", error);
+    }
+  };
+
+
+  const handleNext = async (e) => {
     e.preventDefault();
+    setProcessError(null); // Clear previous errors
     
-    // Custom validation (replacing alert())
+    // Custom validation
     if (currentStep < strategyQuestions.length && !answers[currentQuestion.id]?.trim()) {
       setInputError("Your strategist requires input to proceed. Please provide a detailed answer.");
       return;
@@ -43,17 +116,39 @@ const StrategyInterface = ({ onViewEngine }) => {
       // Move to the next question
       setCurrentStep(prev => prev + 1);
     } else if (currentStep === strategyQuestions.length - 1) {
-      // Final question answered: Start Processing Phase
+      // Final question answered: Start Processing Phase and API Call
       setIsProcessing(true);
-      console.log("[STRATEGY ENGINE] Final Answers:", answers);
       
-      // Simulate backend processing time for the Project Blueprint
-      setTimeout(() => {
+      const userQuery = constructGeminiPrompt(answers);
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`; // API Key is handled by Canvas
+
+      const systemPrompt = "Act as S-Forge, a world-class AI Digital Strategy Consultant. Your goal is to analyze the user's input and generate a highly detailed and actionable Project Blueprint in clean Markdown format. The Blueprint must contain four sections: **1. Project Vision (Summary)**, **2. Technical Blueprint (Tech Stack & Files)**, **3. Content Strategy (Messaging)**, and **4. Next Steps (Build Engine Readiness)**. Ensure the final output is styled beautifully using only Markdown.";
+      
+      const payload = {
+        contents: [{ parts: [{ text: userQuery }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+      };
+
+      try {
+        const result = await fetchWithExponentialBackoff(apiUrl, payload);
+        const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text || 
+                             "Error: Failed to generate a meaningful blueprint. Please try again.";
+        
+        setBlueprintText(generatedText);
+        
+        // 1. Save the generated blueprint to Firestore
+        await saveProject(generatedText); 
+
+        // 2. Transition state
         setIsProcessing(false);
         setIsBlueprintReady(true);
-        // This is where the actual API call will go in the backend phase
-        console.log("[STRATEGY ENGINE] Project Blueprint Generated. Ready for Build Engine.");
-      }, 3500); // 3.5 second simulated processing time
+        console.log("[STRATEGY ENGINE] Project Blueprint Generated and Saved.");
+
+      } catch (e) {
+        setProcessError("Failed to generate Blueprint. Check your network or try again.");
+        setIsProcessing(false);
+        console.error("Gemini API Error:", e);
+      }
     }
   };
 
@@ -62,17 +157,15 @@ const StrategyInterface = ({ onViewEngine }) => {
       ...answers,
       [currentQuestion.id]: value
     });
-    // Clear error message when user starts typing
     if (inputError) setInputError(null); 
   };
   
-  // New: Function to transition to the Build Engine Details page
+  // Transition to the Build Engine Details page
   const launchBuildCanvas = () => {
-      // Navigates to the Build Engine Details view using the App router
+      // Here you would typically pass the blueprintText and currentProjectId to the next view
       onViewEngine('build-details');
-      console.log("[S-FORGE] Transitioning to Build Canvas with Blueprint Data.");
+      console.log(`[S-FORGE] Transitioning to Build Canvas for Project ID: ${currentProjectId}`);
   }
-
 
   // --- Render Logic ---
   const renderContent = () => {
@@ -92,13 +185,13 @@ const StrategyInterface = ({ onViewEngine }) => {
                   Analyzing Data & Compiling Project Blueprint...
                 </h2>
                 <div className="mt-6 flex justify-center items-center space-x-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-4 border-s-accent"></div>
+                  <Loader2 className="animate-spin h-8 w-8 text-s-accent" />
                   <span className="text-s-accent text-xl font-medium">Please wait, forging excellence...</span>
                 </div>
               </motion.div>
           );
       } else if (isBlueprintReady) {
-          // 2. Blueprint Ready State (Final CTA)
+          // 2. Blueprint Ready State (Final CTA + Blueprint Viewer)
           return (
               <motion.div
                 key="summary"
@@ -106,19 +199,29 @@ const StrategyInterface = ({ onViewEngine }) => {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="text-center"
+                className="text-left"
               >
                 <p className="text-s-accent text-2xl mb-4">✅ **Blueprint Ready: Output 1/3 Complete!**</p>
                 <h2 className="text-4xl font-extrabold text-s-background mb-6">
-                  Initiate the Build Engine
+                  Project Blueprint Generated
                 </h2>
-                <p className="text-gray-400 max-w-lg mx-auto">
-                  Your vision is clear. Click below to generate the pristine, file-by-file code based on your strategy.
-                </p>
                 
+                {/* Blueprint Viewer */}
+                <div className="bg-gray-700/50 p-6 rounded-xl border border-s-accent/20 h-[50vh] overflow-y-auto blueprint-viewer">
+                    {/* Render Markdown using dangerouslySetInnerHTML */}
+                    <div 
+                        dangerouslySetInnerHTML={{ __html: marked.parse(blueprintText) }} 
+                        className="prose prose-invert max-w-none text-white space-y-4"
+                    />
+                </div>
+                
+                <h2 className="text-2xl font-extrabold text-s-background mt-8 mb-4 text-center">
+                    Initiate the Build Engine
+                </h2>
+
                 <button
                     onClick={launchBuildCanvas}
-                    className="mt-8 px-8 py-4 bg-s-accent text-s-primary font-bold rounded-lg shadow-xl hover:bg-opacity-90 transition duration-300 transform hover:scale-[1.05]"
+                    className="w-full mt-4 px-8 py-4 bg-s-accent text-s-primary font-bold rounded-lg shadow-xl hover:bg-opacity-90 transition duration-300 transform hover:scale-[1.03]"
                 >
                     Launch Build Canvas →
                 </button>
@@ -159,13 +262,32 @@ const StrategyInterface = ({ onViewEngine }) => {
                         <span>{inputError}</span>
                     </motion.p>
                   )}
+                  
+                  {processError && (
+                    <motion.p 
+                        initial={{ opacity: 0, y: 5 }} 
+                        animate={{ opacity: 1, y: 0 }} 
+                        className="flex items-center space-x-2 text-red-400 mt-2 text-sm font-medium"
+                    >
+                        <AlertTriangle className="w-4 h-4"/>
+                        <span>{processError}</span>
+                    </motion.p>
+                  )}
 
                   <div className="flex justify-end mt-4">
                     <button
                       type="submit"
-                      className="px-6 py-3 bg-s-accent text-s-primary font-bold rounded-lg shadow-md hover:bg-opacity-90 transition duration-300"
+                      disabled={isProcessing}
+                      className="px-6 py-3 bg-s-accent text-s-primary font-bold rounded-lg shadow-md hover:bg-opacity-90 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {currentStep < strategyQuestions.length - 1 ? 'Next Question →' : 'Finalize Strategy'}
+                      {isProcessing ? (
+                        <div className="flex items-center space-x-2">
+                           <Loader2 className="animate-spin h-5 w-5" />
+                           <span>Processing...</span>
+                        </div>
+                      ) : (
+                        currentStep < strategyQuestions.length - 1 ? 'Next Question →' : 'Finalize Strategy'
+                      )}
                     </button>
                   </div>
                 </form>
@@ -176,25 +298,39 @@ const StrategyInterface = ({ onViewEngine }) => {
 
 
   return (
-    <div className="min-h-screen bg-gray-900 text-s-background flex flex-col">
-      
-      {/* 1. Global Header for navigation consistency */}
-      <SiteHeader 
-        onLaunchTool={() => onViewEngine('strategy-tool')} // Allows user to restart the tool
-        onViewEngine={onViewEngine} 
-      />
+    <>
+      <style>
+        {/* Basic CSS for Markdown rendering consistency */}
+        {`
+          .blueprint-viewer h1 { @apply text-3xl font-bold text-s-accent border-b border-s-accent/50 pb-2 mb-4; }
+          .blueprint-viewer h2 { @apply text-2xl font-semibold text-white mt-6 mb-3; }
+          .blueprint-viewer p { @apply text-gray-300 mb-3; }
+          .blueprint-viewer ul { @apply list-disc list-inside ml-4; }
+          .blueprint-viewer li { @apply text-gray-400; }
+          .blueprint-viewer strong { @apply text-s-accent font-bold; }
+        `}
+      </style>
+      <div className="min-h-screen bg-gray-900 text-s-background flex flex-col">
+        
+        {/* 1. Global Header for navigation consistency */}
+        <SiteHeader 
+          onLaunchTool={() => onViewEngine('strategy-tool')} 
+          onViewEngine={onViewEngine} 
+        />
 
-      {/* Main Conversational Area - uses pt-20 to clear fixed header */}
-      <main className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center pt-32"> 
-        <div className="w-full max-w-3xl bg-gray-800 p-8 rounded-2xl shadow-2xl border border-s-accent/20">
+        {/* Main Conversational Area - uses pt-20 to clear fixed header */}
+        <main className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center pt-32"> 
+          <div className="w-full max-w-4xl bg-gray-800 p-8 rounded-2xl shadow-2xl border border-s-accent/20">
 
-          <AnimatePresence mode="wait">
-            {renderContent()}
-          </AnimatePresence>
-        </div>
-      </main>
-    </div>
+            <AnimatePresence mode="wait">
+              {renderContent()}
+            </AnimatePresence>
+          </div>
+        </main>
+      </div>
+    </>
   );
 };
 
 export default StrategyInterface;
+          
