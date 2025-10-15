@@ -5,21 +5,24 @@ import CaseStudiesSection from './CaseStudiesSection.jsx';
 import CallToActionSection from './CallToActionSection.jsx'; 
 import SiteFooter from './SiteFooter.jsx'; 
 
-// Accepts both navigation handlers
-const LandingPage = ({ onLaunchTool, onViewEngine }) => {
+// CRITICAL: Now correctly accepts all necessary props from App.jsx
+const LandingPage = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpenAuthModal }) => {
   return (
     <>
-      {/* Pass both navigation props to the header */}
+      {/* 1. Pass all props needed for Auth/Navigation to the SiteHeader */}
       <SiteHeader 
         onLaunchTool={onLaunchTool} 
         onViewEngine={onViewEngine} 
+        currentUser={currentUser}
+        onSignOut={onSignOut}
+        onOpenAuthModal={onOpenAuthModal}
       />
-      <main className="flex-grow pt-20"> {/* Added pt-20 to push content below the fixed header */}
+      <main className="flex-grow pt-20"> 
         <HeroSection onLaunchTool={onLaunchTool} /> 
-        {/* Pass onViewEngine down so WorkflowSection CTAs can navigate */}
         <WorkflowSection onViewEngine={onViewEngine} /> 
         <CaseStudiesSection /> 
-        <CallToActionSection /> 
+        {/* 2. CRITICAL: Pass the onOpenAuthModal prop to the CallToActionSection */}
+        <CallToActionSection onOpenAuthModal={onOpenAuthModal} /> 
       </main>
       <SiteFooter />
     </>
