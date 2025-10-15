@@ -17,16 +17,18 @@ const fetchWithExponentialBackoff = async (apiUrl, payload, retries = 5, delay =
             });
 
             if (!response.ok) {
-                // Throw an error to trigger retry logic, unless it's a 4xx error (user error)
+                // Read the response body to capture the precise error message from the API
+                const errorBody = await response.text().catch(() => response.statusText);
+                
+                // Throw an error that includes the status code and API message for debugging
                 if (response.status >= 400 && response.status < 500) {
-                    throw new Error(`Client Error (${response.status}): Could not process request.`, { cause: 'no_retry' });
+                    throw new Error(`Client Error (${response.status}): ${errorBody}`, { cause: 'no_retry' });
                 }
                 throw new Error(`API call failed with status: ${response.status}`);
             }
 
             return await response.json();
         } catch (error) {
-            // Note: Removed specific API Key check here, relying on general error handling
             if (error.cause === 'no_retry' || i === retries - 1) {
                 console.error("Fetch failed after all retries or due to client error:", error);
                 throw error;
@@ -124,7 +126,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
       
       const userQuery = constructGeminiPrompt(answers);
       
-      // CRITICAL FIX: Reverting to the required URL format for platform API key injection.
+      // Using the required URL format for platform API key injection.
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`; 
 
       const systemPrompt = "Act as S-Forge, a world-class AI Digital Strategy Consultant. Your goal is to analyze the user's input and generate a highly detailed and actionable Project Blueprint in clean Markdown format. The Blueprint must contain four sections: **1. Project Vision (Summary)**, **2. Technical Blueprint (Tech Stack & Files)**, **3. Content Strategy (Messaging)**, and **4. Next Steps (Build Engine Readiness)**. Ensure the final output is styled beautifully using only Markdown.";
@@ -152,9 +154,9 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
       } catch (e) {
         let errorMessage = "Failed to generate Blueprint. This might be a network issue, or the API failed to respond.";
         
-        // Check for specific error messages from the fetch utility
+        // Show the specific error details captured in the fetch utility
         if (e.message.includes('Client Error')) {
-             errorMessage = "API Request failed. Ensure your request is valid or try again.";
+            errorMessage = `API request failed: ${e.message.replace('Client Error', 'HTTP Error')}. Check console for full details.`;
         }
           
         setProcessError(errorMessage);
@@ -348,4 +350,4 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
 };
 
 export default StrategyInterface;
-            
+                          
