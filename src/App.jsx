@@ -38,7 +38,7 @@ function App() {
   return (
     <AnimatePresence mode="wait" initial={false}>
       
-      {/* 1. Marketing Landing Page View */}
+      {/* 1. Marketing Landing Page View (Root Router) */}
       {currentView === 'landing' && (
         <motion.div 
           key="landing"
@@ -58,7 +58,7 @@ function App() {
       {/* 2. S-Forge Strategy Tool Interface View */}
       {currentView === 'strategy-tool' && (
         <motion.div 
-          key="strategy-tool" // Updated key for consistency
+          key="strategy-tool" 
           variants={pageTransition}
           initial="initial"
           animate="animate"
@@ -67,7 +67,7 @@ function App() {
         >
           <StrategyInterface 
              onReturnToLanding={handleReturnToLanding} 
-             onViewEngine={handleViewEngine} // Used for transition to Build Engine
+             onViewEngine={handleViewEngine} // Critical for navigating to Build Engine
           /> 
         </motion.div>
       )}
@@ -82,7 +82,7 @@ function App() {
           exit="exit"
           className="min-h-screen flex flex-col font-sans" 
         >
-          <BuildEngineDetails onReturnToLanding={handleReturnToLanding} /> 
+          <BuildEngineDetails onReturnToLanding={handleReturnToLanding} onViewEngine={handleViewEngine} /> 
         </motion.div>
       )}
       
@@ -96,7 +96,7 @@ function App() {
           exit="exit"
           className="min-h-screen flex flex-col font-sans" 
         >
-          <MarketEngineDetails onReturnToLanding={handleReturnToLanding} /> 
+          <MarketEngineDetails onReturnToLanding={handleReturnToLanding} onViewEngine={handleViewEngine} /> 
         </motion.div>
       )}
       
@@ -110,7 +110,7 @@ function App() {
           exit="exit"
           className="min-h-screen flex flex-col font-sans" 
         >
-          <ProjectsHistory onReturnToLanding={handleReturnToLanding} /> 
+          <ProjectsHistory onReturnToLanding={handleReturnToLanding} onViewEngine={handleViewEngine} /> 
         </motion.div>
       )}
     </AnimatePresence>
