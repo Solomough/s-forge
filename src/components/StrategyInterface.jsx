@@ -2,13 +2,9 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import SiteHeader from './SiteHeader.jsx'; 
-import { collection, addDoc } from 'firebase/firestore'; // Removed getFirestore as it's passed via props
-import { User } from 'firebase/auth'; // Keep for type-checking reference
+import { collection, addDoc } from 'firebase/firestore'; 
+import { User } from 'firebase/auth';
 import { marked } from 'marked'; // For rendering Markdown output
-
-// --- GLOBAL CONSTANTS ---
-// CRITICAL: Get the Gemini API Key from the global context/environment
-const geminiApiKey = typeof __gemini_api_key !== 'undefined' ? __gemini_api_key : null;
 
 // Utility function to handle API calls with network resilience
 const fetchWithExponentialBackoff = async (apiUrl, payload, retries = 5, delay = 1000) => {
@@ -23,20 +19,16 @@ const fetchWithExponentialBackoff = async (apiUrl, payload, retries = 5, delay =
             if (!response.ok) {
                 // Throw an error to trigger retry logic, unless it's a 4xx error (user error)
                 if (response.status >= 400 && response.status < 500) {
-                    // Check if the error is due to missing key (400 or 403 often indicates this for Gemini)
-                    const errorBody = await response.json().catch(() => ({}));
-                    if (response.status === 400 && errorBody.error?.message?.includes('API key not valid')) {
-                        throw new Error(`API Key Error: Check __gemini_api_key environment variable.`, { cause: 'fatal' });
-                    }
-                    throw new Error(`Client Error: ${response.status} - ${response.statusText}`, { cause: 'no_retry' });
+                    throw new Error(`Client Error (${response.status}): Could not process request.`, { cause: 'no_retry' });
                 }
                 throw new Error(`API call failed with status: ${response.status}`);
             }
 
             return await response.json();
         } catch (error) {
-            if (error.cause === 'fatal' || error.cause === 'no_retry' || i === retries - 1) {
-                console.error("Fetch failed after all retries or due to client/fatal error:", error);
+            // Note: Removed specific API Key check here, relying on general error handling
+            if (error.cause === 'no_retry' || i === retries - 1) {
+                console.error("Fetch failed after all retries or due to client error:", error);
                 throw error;
             }
             // Wait for exponentially increasing time
@@ -60,6 +52,7 @@ const promptVariants = {
   exit: { opacity: 0, y: -10 }
 };
 
+// Added onSignOut and onOpenAuthModal props for completeness, needed by SiteHeader
 const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignOut, onOpenAuthModal }) => {
   const [currentStep, setCurrentStep] = useState(0); 
   const [answers, setAnswers] = useState({});
@@ -88,6 +81,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
     if (!db) return; // DB must be initialized
 
     try {
+        // Using the user's private collection path
         const projectsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/projects`);
         
         const projectData = {
@@ -125,19 +119,13 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
       // Move to the next question
       setCurrentStep(prev => prev + 1);
     } else if (currentStep === strategyQuestions.length - 1) {
-      
-      // CRITICAL: Check for API Key BEFORE making the call
-      if (!geminiApiKey) {
-          setProcessError("Fatal Error: Gemini API Key is missing. Check the __gemini_api_key environment variable.");
-          return;
-      }
-      
       // Final question answered: Start Processing Phase and API Call
       setIsProcessing(true);
       
       const userQuery = constructGeminiPrompt(answers);
-      // CORRECTED: Appending the API key directly to the URL from the global constant
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${geminiApiKey}`; 
+      
+      // CRITICAL FIX: Reverting to the required URL format for platform API key injection.
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=`; 
 
       const systemPrompt = "Act as S-Forge, a world-class AI Digital Strategy Consultant. Your goal is to analyze the user's input and generate a highly detailed and actionable Project Blueprint in clean Markdown format. The Blueprint must contain four sections: **1. Project Vision (Summary)**, **2. Technical Blueprint (Tech Stack & Files)**, **3. Content Strategy (Messaging)**, and **4. Next Steps (Build Engine Readiness)**. Ensure the final output is styled beautifully using only Markdown.";
       
@@ -151,7 +139,6 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
         const generatedText = result.candidates?.[0]?.content?.parts?.[0]?.text || 
                              "Error: Failed to generate a meaningful blueprint. Please try again.";
         
-        // Before setting the text, ensure it is saved
         setBlueprintText(generatedText);
         
         // 1. Save the generated blueprint to Firestore
@@ -163,11 +150,13 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
         console.log("[STRATEGY ENGINE] Project Blueprint Generated and Saved.");
 
       } catch (e) {
-          let errorMessage = "Failed to generate Blueprint. Check your network or try again.";
-          // Enhance error message if it's the specific API key error
-          if (e.message.includes('API Key Error')) {
-              errorMessage = e.message;
-          }
+        let errorMessage = "Failed to generate Blueprint. This might be a network issue, or the API failed to respond.";
+        
+        // Check for specific error messages from the fetch utility
+        if (e.message.includes('Client Error')) {
+             errorMessage = "API Request failed. Ensure your request is valid or try again.";
+        }
+          
         setProcessError(errorMessage);
         setIsProcessing(false);
         console.error("Gemini API Error:", e);
@@ -339,7 +328,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
         <SiteHeader 
           onLaunchTool={() => onViewEngine('strategy-tool')} 
           onViewEngine={onViewEngine} 
-          currentUser={currentUser} // Passed for sign-in/sign-out logic
+          currentUser={currentUser} // Added for sign-in/sign-out logic
           onSignOut={onSignOut}
           onOpenAuthModal={onOpenAuthModal}
         />
@@ -359,3 +348,4 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
 };
 
 export default StrategyInterface;
+            
