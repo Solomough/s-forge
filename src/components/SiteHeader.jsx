@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Menu, X, Code, Zap, DollarSign, Archive, LogIn } from 'lucide-react'; 
+import { Menu, X, Code, Zap, DollarSign, Archive, LogIn, LogOut, User } from 'lucide-react'; 
 
 // Navigation links data
 const navLinks = [
@@ -29,18 +29,35 @@ const itemVariants = {
     visible: { opacity: 1, x: 0 }
 };
 
-
-const SiteHeader = ({ onLaunchTool, onViewEngine }) => {
+// --- Component Definition ---
+const SiteHeader = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpenAuthModal }) => {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+    // Helper to check if the current user is a registered user (not anonymous)
+    const isRegisteredUser = currentUser && !currentUser.isAnonymous;
 
     // Determines which function to call based on the link's type
     const handleNavigation = (path, isTool) => {
         setIsMenuOpen(false); // Close menu on click
+        setIsUserMenuOpen(false); // Close user menu on click
         if (isTool) {
             onLaunchTool();
         } else {
             onViewEngine(path);
         }
+    };
+    
+    // Handler for Sign In / Sign Up
+    const handleAuthClick = () => {
+        setIsMenuOpen(false);
+        onOpenAuthModal();
+    };
+    
+    // Handler for Sign Out
+    const handleSignOutClick = () => {
+        setIsUserMenuOpen(false);
+        onSignOut();
     };
 
     return (
@@ -48,7 +65,6 @@ const SiteHeader = ({ onLaunchTool, onViewEngine }) => {
           variants={headerVariants}
           initial="hidden"
           animate="visible"
-          // Changed to fixed for better mobile usability, allowing content scrolling underneath
           className="fixed top-0 z-50 w-full bg-s-background/95 backdrop-blur-sm shadow-xl border-b border-gray-100" 
         >
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -76,14 +92,79 @@ const SiteHeader = ({ onLaunchTool, onViewEngine }) => {
               ))}
             </nav>
 
-            {/* CTA Button (Sign In / Start Project) */}
-            <button 
-                onClick={() => handleNavigation('strategy-tool', true)} // Uses the Strategy Engine Launch
-                className="hidden sm:block px-6 py-2 bg-s-primary text-s-accent border border-s-accent font-medium rounded-lg shadow-lg hover:bg-s-accent hover:text-s-primary transition duration-300 transform hover:scale-[1.03] flex items-center space-x-2"
-            >
-                <LogIn className='w-4 h-4'/>
-                <span>Start Project</span>
-            </button>
+            {/* CTA Button (Desktop) */}
+            <div className="hidden sm:flex items-center space-x-4 relative">
+                
+                {/* 1. If NOT Signed In, show Sign In button */}
+                {!isRegisteredUser && (
+                    <button 
+                        onClick={handleAuthClick}
+                        className="px-6 py-2 bg-s-primary text-s-accent border border-s-accent font-medium rounded-lg shadow-lg hover:bg-s-accent hover:text-s-primary transition duration-300 transform hover:scale-[1.03] flex items-center space-x-2"
+                    >
+                        <LogIn className='w-4 h-4'/>
+                        <span>Sign In</span>
+                    </button>
+                )}
+                
+                {/* 2. If Signed In, show User Menu */}
+                {isRegisteredUser && (
+                    <>
+                        <button 
+                            onClick={() => handleNavigation('strategy-tool', true)} // Launch Tool button for registered users
+                            className="px-6 py-2 bg-s-accent text-s-primary font-medium rounded-lg shadow-lg hover:bg-s-accent/90 transition duration-300 transform hover:scale-[1.03]"
+                        >
+                            Launch Tool
+                        </button>
+                        <button
+                            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                            className="w-10 h-10 flex items-center justify-center rounded-full bg-s-accent text-s-primary font-bold border-2 border-s-accent hover:ring-2 hover:ring-s-accent/50 transition duration-200"
+                            aria-expanded={isUserMenuOpen}
+                        >
+                            <User className='w-5 h-5'/>
+                        </button>
+                        
+                        {/* User Dropdown Menu */}
+                        {isUserMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ duration: 0.15 }}
+                                className="absolute right-0 top-14 mt-2 w-48 bg-gray-800 rounded-lg shadow-2xl overflow-hidden border border-gray-700"
+                            >
+                                <div className="p-3 text-sm text-s-accent font-semibold truncate border-b border-gray-700">
+                                    {currentUser.email || "Anonymous User"}
+                                </div>
+                                <button
+                                    onClick={() => handleNavigation('projects-history', false)}
+                                    className="flex items-center space-x-3 w-full p-3 text-left text-s-text hover:bg-gray-700 transition duration-150"
+                                >
+                                    <Archive className='w-4 h-4' />
+                                    <span>My Projects</span>
+                                </button>
+                                <button
+                                    onClick={handleSignOutClick}
+                                    className="flex items-center space-x-3 w-full p-3 text-left text-red-400 hover:bg-gray-700 transition duration-150 border-t border-gray-700"
+                                >
+                                    <LogOut className='w-4 h-4' />
+                                    <span>Sign Out</span>
+                                </button>
+                            </motion.div>
+                        )}
+                    </>
+                )}
+                
+                {/* 3. If Anonymous, only show Launch Tool (This is managed by App.jsx, but we keep the button consistent) */}
+                {currentUser && currentUser.isAnonymous && !isRegisteredUser && (
+                    <button 
+                        onClick={() => handleNavigation('strategy-tool', true)}
+                        className="px-6 py-2 bg-s-accent text-s-primary font-medium rounded-lg shadow-lg hover:bg-s-accent/90 transition duration-300 transform hover:scale-[1.03]"
+                    >
+                        Launch Tool
+                    </button>
+                )}
+                
+            </div>
 
             {/* Mobile Menu Icon (Toggle) */}
             <div className="lg:hidden">
@@ -121,14 +202,25 @@ const SiteHeader = ({ onLaunchTool, onViewEngine }) => {
                         ))}
                         
                         {/* Mobile Authentication/Start CTA */}
-                        <motion.button
-                            variants={itemVariants}
-                            onClick={() => console.log("[AUTH] Launch Sign In/Sign Up Modal")}
-                            className="flex items-center space-x-3 p-3 mt-4 bg-s-primary text-s-accent font-bold rounded-lg shadow-md hover:bg-s-accent hover:text-s-primary transition duration-300 border border-s-accent"
-                        >
-                            <LogIn className="w-5 h-5"/>
-                            <span>Sign In / Sign Up</span>
-                        </motion.button>
+                        {isRegisteredUser ? (
+                            <motion.button
+                                variants={itemVariants}
+                                onClick={handleSignOutClick}
+                                className="flex items-center space-x-3 p-3 mt-4 bg-red-500 text-s-primary font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-300"
+                            >
+                                <LogOut className="w-5 h-5"/>
+                                <span>Sign Out ({currentUser.email.split('@')[0]})</span>
+                            </motion.button>
+                        ) : (
+                            <motion.button
+                                variants={itemVariants}
+                                onClick={handleAuthClick}
+                                className="flex items-center space-x-3 p-3 mt-4 bg-s-primary text-s-accent font-bold rounded-lg shadow-md hover:bg-s-accent hover:text-s-primary transition duration-300 border border-s-accent"
+                            >
+                                <LogIn className="w-5 h-5"/>
+                                <span>Sign In / Sign Up</span>
+                            </motion.button>
+                        )}
                     </motion.nav>
                 </motion.div>
             )}
@@ -137,4 +229,3 @@ const SiteHeader = ({ onLaunchTool, onViewEngine }) => {
 };
 
 export default SiteHeader;
-                  
