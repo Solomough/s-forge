@@ -92,6 +92,7 @@ function App() {
     if (auth) {
         try {
             await signOut(auth);
+            setActiveProjectId(null); // Clear project context on sign out
             setCurrentView('landing'); // Return to landing page after sign out
         } catch (error) {
             console.error("Error signing out:", error);
@@ -107,9 +108,7 @@ function App() {
   
   // Generic handler for internal navigation, used by SiteHeader and internal CTAs
   const handleViewEngine = (engineKey, projectId = null) => { 
-    if (projectId) {
-        setActiveProjectId(projectId); // Set active project for context
-    }
+    // We don't set the ID here anymore; it's set by StrategyInterface or ProjectsHistory
     setCurrentView(engineKey); 
   };
   
@@ -173,7 +172,7 @@ function App() {
                 auth={auth}
                 currentUser={currentUser}
                 appId={appId}
-                // setActiveProjectId is correctly passed to allow setting the ID on save
+                // CRITICAL: This is where StrategyInterface sends the ID back
                 setActiveProjectId={setActiveProjectId} 
                 onSignOut={handleSignOut} 
                 onOpenAuthModal={onOpenAuthModal}
@@ -198,7 +197,7 @@ function App() {
                 auth={auth}
                 currentUser={currentUser}
                 appId={appId}
-                // CRITICAL: Passing the ID of the project created in the Strategy Engine
+                // CRITICAL: BuildEngineDetails reads the ID set by StrategyInterface
                 projectId={activeProjectId} 
                 onSignOut={handleSignOut}
                 onOpenAuthModal={onOpenAuthModal}
@@ -267,4 +266,3 @@ function App() {
 }
 
 export default App;
-      
