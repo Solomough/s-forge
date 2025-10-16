@@ -41,6 +41,7 @@ const SiteHeader = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpen
     const handleNavigation = (path, isTool) => {
         setIsMenuOpen(false); // Close menu on click
         setIsUserMenuOpen(false); // Close user menu on click
+        // Only launch tool if they explicitly click 'Strategy' from the menu, otherwise view engine
         if (isTool) {
             onLaunchTool();
         } else {
@@ -51,7 +52,7 @@ const SiteHeader = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpen
     // Handler for Sign In / Sign Up
     const handleAuthClick = () => {
         setIsMenuOpen(false);
-        onOpenAuthModal();
+        onOpenAuthModal(); // CRITICAL: This correctly calls the modal opener
     };
     
     // Handler for Sign Out
@@ -95,7 +96,7 @@ const SiteHeader = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpen
             {/* CTA Button (Desktop) */}
             <div className="hidden sm:flex items-center space-x-4 relative">
                 
-                {/* 1. If NOT Signed In, show Sign In button */}
+                {/* 1. If NOT Registered, show Sign In button (includes anonymous users) */}
                 {!isRegisteredUser && (
                     <button 
                         onClick={handleAuthClick}
@@ -106,7 +107,7 @@ const SiteHeader = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpen
                     </button>
                 )}
                 
-                {/* 2. If Signed In, show User Menu */}
+                {/* 2. If Registered, show Launch Tool and User Menu */}
                 {isRegisteredUser && (
                     <>
                         <button 
@@ -133,7 +134,7 @@ const SiteHeader = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpen
                                 className="absolute right-0 top-14 mt-2 w-48 bg-gray-800 rounded-lg shadow-2xl overflow-hidden border border-gray-700"
                             >
                                 <div className="p-3 text-sm text-s-accent font-semibold truncate border-b border-gray-700">
-                                    {currentUser.email || "Anonymous User"}
+                                    {currentUser.email || currentUser.uid.substring(0, 8)} {/* Use UID if email is missing */}
                                 </div>
                                 <button
                                     onClick={() => handleNavigation('projects-history', false)}
@@ -152,16 +153,6 @@ const SiteHeader = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpen
                             </motion.div>
                         )}
                     </>
-                )}
-                
-                {/* 3. If Anonymous, only show Launch Tool (This is managed by App.jsx, but we keep the button consistent) */}
-                {currentUser && currentUser.isAnonymous && !isRegisteredUser && (
-                    <button 
-                        onClick={() => handleNavigation('strategy-tool', true)}
-                        className="px-6 py-2 bg-s-accent text-s-primary font-medium rounded-lg shadow-lg hover:bg-s-accent/90 transition duration-300 transform hover:scale-[1.03]"
-                    >
-                        Launch Tool
-                    </button>
                 )}
                 
             </div>
@@ -209,13 +200,13 @@ const SiteHeader = ({ onLaunchTool, onViewEngine, currentUser, onSignOut, onOpen
                                 className="flex items-center space-x-3 p-3 mt-4 bg-red-500 text-s-primary font-bold rounded-lg shadow-md hover:bg-red-600 transition duration-300"
                             >
                                 <LogOut className="w-5 h-5"/>
-                                <span>Sign Out ({currentUser.email.split('@')[0]})</span>
+                                <span>Sign Out ({currentUser.email ? currentUser.email.split('@')[0] : 'User'})</span>
                             </motion.button>
                         ) : (
                             <motion.button
                                 variants={itemVariants}
                                 onClick={handleAuthClick}
-                                className="flex items-center space-x-3 p-3 mt-4 bg-s-primary text-s-accent font-bold rounded-lg shadow-md hover:bg-s-accent hover:text-s-primary transition duration-300 border border-s-accent"
+                                className="flex items-center space-x-3 p-3 mt-4 bg-s-accent text-s-primary font-bold rounded-lg shadow-md hover:bg-s-accent/90 transition duration-300"
                             >
                                 <LogIn className="w-5 h-5"/>
                                 <span>Sign In / Sign Up</span>
