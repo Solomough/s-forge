@@ -23,7 +23,7 @@ const fetchWithExponentialBackoff = async (apiUrl, payload, retries = 5, delay =
                 throw new Error(`API call failed with status: ${response.status}`);
             }
             return await response.json();
-        } catch (error) { // <-- SYNTAX FIXED HERE
+        } catch (error) { 
             if (error.cause === 'no_retry' || i === retries - 1) {
                 console.error("Build Engine Fetch failed:", error);
                 throw error;
@@ -132,7 +132,7 @@ const BuildEngine = ({ onViewEngine, db, currentUser, appId, projectId, onSignOu
       
     const payload = {
       contents: [{ parts: [{ text: codePrompt }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] }],
+      systemInstruction: { parts: [{ text: systemPrompt }] }, // <-- SYNTAX FIX: Removed the extra ']'
     };
 
     try {
@@ -162,14 +162,11 @@ const BuildEngine = ({ onViewEngine, db, currentUser, appId, projectId, onSignOu
   
   // 3. Copy Code to Clipboard (Remains the same)
   const copyCode = () => {
-    navigator.clipboard.writeText(generatedCode).then(() => {
-        setCopyStatus("Copied!");
-        setTimeout(() => setCopyStatus(null), 2000);
-    }, () => {
-        setCopyStatus("Failed to copy!");
-        setTimeout(() => setCopyStatus(null), 2000);
-    });
+    document.execCommand('copy', false, generatedCode); // Use execCommand for broader compatibility
+    setCopyStatus("Copied!");
+    setTimeout(() => setCopyStatus(null), 2000);
   };
+
 
   // 4. Handle Next/Previous File Navigation (Remains the same)
   const handleNextStep = () => {
@@ -327,3 +324,4 @@ const BuildEngine = ({ onViewEngine, db, currentUser, appId, projectId, onSignOu
 
 // We export the component under the original file name
 export default BuildEngine;
+                           
