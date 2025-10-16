@@ -28,7 +28,7 @@ const fetchWithExponentialBackoff = async (apiUrl, payload, retries = 5, delay =
             }
 
             return await response.json();
-        } catch (error) { // <-- SYNTAX FIXED HERE
+        } catch (error) { 
             if (error.cause === 'no_retry' || i === retries - 1) {
                 console.error("Fetch failed after all retries or due to client error:", error);
                 throw error;
@@ -54,8 +54,8 @@ const promptVariants = {
   exit: { opacity: 0, y: -10 }
 };
 
-// Added onSignOut and onOpenAuthModal props for completeness, needed by SiteHeader
-const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignOut, onOpenAuthModal }) => {
+// **UPDATED PROPS: Added setActiveProjectId**
+const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignOut, onOpenAuthModal, setActiveProjectId }) => {
   const [currentStep, setCurrentStep] = useState(0); 
   const [answers, setAnswers] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,7 +63,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
   const [inputError, setInputError] = useState(null);
   const [blueprintText, setBlueprintText] = useState("");
   const [processError, setProcessError] = useState(null);
-  const [currentProjectId, setCurrentProjectId] = useState(null);
+  const [currentProjectId, setCurrentProjectId] = useState(null); // Local copy of the ID
 
   const currentQuestion = strategyQuestions[currentStep];
   const userId = currentUser?.uid || 'anonymous';
@@ -99,9 +99,13 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
         };
         
         const docRef = await addDoc(projectsCollectionRef, projectData);
-        setCurrentProjectId(docRef.id);
+        
+        // CRITICAL FIX #1: Update App.jsx's state with the new project ID
+        setActiveProjectId(docRef.id);
+        setCurrentProjectId(docRef.id); // Also update local state
+        
         console.log("Project Blueprint saved to Firestore:", docRef.id);
-
+        return docRef.id; // Return the ID for immediate use
     } catch (error) {
         console.error("Error saving project to Firestore:", error);
     }
@@ -154,7 +158,7 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
         
         setBlueprintText(generatedText);
         
-        // 1. Save the generated blueprint to Firestore
+        // 1. Save the generated blueprint to Firestore, which NOW sets the central Project ID
         await saveProject(generatedText); 
 
         // 2. Transition state
@@ -187,8 +191,9 @@ const StrategyInterface = ({ onViewEngine, db, auth, currentUser, appId, onSignO
   
   // Transition to the Build Engine Details page
   const launchBuildCanvas = () => {
-      // Pass the currentProjectId to the next view
-      onViewEngine('build-details', currentProjectId); 
+      // CRITICAL FIX #2: We no longer need to pass the ID here because saveProject already set the ID.
+      // We rely on the `activeProjectId` state in App.jsx now being correctly set.
+      onViewEngine('build-details'); 
       console.log(`[S-FORGE] Transitioning to Build Canvas for Project ID: ${currentProjectId}`);
   }
 
